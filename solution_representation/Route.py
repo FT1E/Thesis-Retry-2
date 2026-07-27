@@ -63,9 +63,7 @@ class Route:
         return '\n'.join(lines)
 
     def print(self):
-        print(f"\tRoute length ({self.length}) and demand ({self.demand}):")
-        for edge in self.targets:
-            print(f"\t{edge}")
+        print(str(self))
 
     # END GENERAL METHODS
 
