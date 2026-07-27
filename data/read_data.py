@@ -20,6 +20,15 @@ vehicle_data_directory = os.path.join('D:\\','Seminar-Restart', 'data', 'SP-CARP
         # num_fractions = int(re.sub(r'.*:\s*', '', lines[4]))
 
 
+# to make sure that 0 is always the depot node
+def swap_depot_node(node_number, depot_node):
+
+    if node_number == depot_node:
+        return 0
+    elif node_number == 0:
+        return depot_node
+    
+    return node_number
 
 # get data for graph i
 # list of all edges for graph i
@@ -69,6 +78,10 @@ def get_graph_edge_list(i, filter = 0):
 
         for e in edge_data.itertuples(False):
             edge_frequencies = [intervals[i] for i in range(num_of_intervals) if getattr(e, f'Demand_{i}') != 0]
+
+            if depot_node != 0:
+                e.StartNodeNumber = swap_depot_node(e.StartNodeNumber, depot_node)
+                e.EndNodeNumber = swap_depot_node(e.EndNodeNumber, depot_node)
 
             # make 1 edge with invalid frequency - so it doesn't get skipped in routing calculations
             # in case it gets cut below

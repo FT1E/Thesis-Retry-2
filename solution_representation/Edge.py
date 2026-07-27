@@ -1,10 +1,13 @@
 
 import math
 import sys
+import enum
 
 sys.path.append('..')
 
 from solution_representation.Solution import EXPECTED_SPACING_PENALTY
+
+PriorityType = Enum('PriorityType', {'Frequency' : 0, 'Deadline' : 1, 'Distance' : 2})
 
 
 class Edge:
