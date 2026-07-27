@@ -1,0 +1,21 @@
+NumberDaysPlanningHorizon	168		
+NumberDaysWeek			7		
+FirstDayIndex			1		
+NumberDaysNoService		48		
+DaysNoService			6	7	13	14 	20	21	27	28	34	35	41	42	48	49	55	56	62	63	69	70	76	77	83	84	90	91	97	98	104	105	111	112	118	119	125	126	132	133	139	140	146	147	153	154	160	161	167	168
+NumberVehicleTypes:	1
+-------------------------
+VehicleType:				1
+NumberVehicles				1000	
+NumberCompartments			1
+CompartmentCapacities			28000
+NumberCompression			2
+General_Glass_Metal_Plastic_Organic	6
+Paper					6
+TravelSpeed				1000
+TimeEmptyPerBin				0
+TimeUnload				0
+TimeDurationLimit			1000
+NumberBinsLimit				1000
+
+
