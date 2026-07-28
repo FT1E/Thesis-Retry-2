@@ -1,7 +1,7 @@
 
 import math
 import sys
-import enum
+from enum import Enum
 
 sys.path.append('..')
 
@@ -69,12 +69,19 @@ class Edge:
 
     # METHODS USED IN GREEDY ALGORITHM
     
+    # ! this shouldn't be called on edges with different priority type
+    # ? if their priority value is equal then return the shorter edge - with smaller distance/length
     def __lt__(self, other):
-        return self.priority() < other.priority()
+        if self.priority() != other.priority():
+            return self.priority() < other.priority()
+        else:
+            return self.distance < other.distance
     
     def priority(self):
         match self.priority_type:
             case PriorityType.Deadline:
+                if self.freq <= 0:
+                    return 2000     # ? sufficiently large number so that it's always larger than vehicles with positive frequency
                 return self.freq + self.last_cleaning_day
             case PriorityType.Frequency:
                 return self.freq

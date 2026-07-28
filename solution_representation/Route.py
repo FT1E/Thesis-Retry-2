@@ -42,6 +42,11 @@ class Route:
         self.length = min_distance_ne(0, self.targets[0]) + min_distance_ne(0, self.targets[-1])
         for i in range(len(self.targets) - 1):
             self.length += min_distance_ee(self.targets[i], self.targets[i+1])
+        
+        # add length of the edges, not just distances between them
+        for edge in self.targets:
+            self.length += edge.distance
+
         return self.length
     
     def calculate_demand(self):

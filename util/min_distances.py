@@ -2,15 +2,16 @@
 import os
 import json
 import heapq as hq
+import sys
 
+sys.path.append('..')
+from solution_representation.Edge import PriorityType
 
 memo_distances = None
 loaded_graph_id = None
 
 min_dist_directory = os.path.join('D:\\','Seminar-Restart', 'data', 'SP-CARP-graphs-min-distances')
 
-
-# TODO - MAKE SURE ADJACENCY LIST HAS EDGES WITH PRIORITY_TYPE.DISTANCE
 
 
 def calculate_distances(adjacency_list, graph_id):
@@ -37,8 +38,12 @@ def calculate_distances(adjacency_list, graph_id):
 
     # make sure edges are sorted by their length / distance
     for al in adjacency_list:
+        if len(al) > 0 and al[0].priority_type == PriorityType.Distance:
+            # if one edge has this priority_type then all have as well
+            break
+
         for edge in al:
-            edge.priority_type = 2
+            edge.priority_type = PriorityType.Distance
 
     memo_distances = dict()
     for i in range(len(adjacency_list)):

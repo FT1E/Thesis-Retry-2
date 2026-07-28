@@ -32,7 +32,7 @@ def swap_depot_node(node_number, depot_node):
 
 # get data for graph i
 # list of all edges for graph i
-def get_graph_edge_list(i, filter = 0):
+def get_graph_edge_list(i, filter = None):
     try:
         file = os.listdir(graph_data_directory)[i]
     except IndexError:
@@ -79,30 +79,33 @@ def get_graph_edge_list(i, filter = 0):
         for e in edge_data.itertuples(False):
             edge_frequencies = [intervals[i] for i in range(num_of_intervals) if getattr(e, f'Demand_{i}') != 0]
 
+            start_node = e.StartNodeNumber
+            end_node = e.EndNodeNumber
+
             if depot_node != 0:
-                e.StartNodeNumber = swap_depot_node(e.StartNodeNumber, depot_node)
-                e.EndNodeNumber = swap_depot_node(e.EndNodeNumber, depot_node)
+                start_node = swap_depot_node(e.StartNodeNumber, depot_node)
+                end_node = swap_depot_node(e.EndNodeNumber, depot_node)
 
             # make 1 edge with invalid frequency - so it doesn't get skipped in routing calculations
             # in case it gets cut below
-            res.append(Edge(e.EdgeNumber, e.StartNodeNumber, e.EndNodeNumber, -1, e.Cost, -1))
+            res.append(Edge(e.EdgeNumber, start_node, end_node, -1, e.Cost, -1))
 
             # else make 1 edge for each frequency (1 or more)
             cnt = 0
             for freq in edge_frequencies:
-                if freq > filter:
+                if filter is not None and freq > filter:
                     # skip edges with frequecny higher than planning period
                     # example planning period is 14 days, but there is an edge with frequency 56
                     # no edge will be skipped when vehicle with longest planning period is used
                     continue
-                res.append(Edge(int(e.EdgeNumber) + cnt, e.StartNodeNumber, e.EndNodeNumber, getattr(e, edge_header[5 + 2*intervals.index(freq)]), e.Cost, freq))
+                res.append(Edge(int(e.EdgeNumber) + cnt, start_node, end_node, getattr(e, edge_header[5 + 2*intervals.index(freq)]), e.Cost, freq))
                 cnt += 1
             
         return res
 
 
 # list of edges with non-zero demand
-def get_graph_demanded_edges(i, filter=0):
+def get_graph_demanded_edges(i, filter=None):
     
     edge_list = get_graph_edge_list(i, filter=filter)
 
@@ -142,7 +145,7 @@ def get_graph_metadata(i):
         return {'num_nodes' : num_nodes, 'num_edges' : num_edges, 'depot_node' : depot_node}
 
 # get adjacency list for graph i
-def get_graph_al(i, priority_type = PriorityType.Deadline, filter=0):
+def get_graph_al(i, priority_type = PriorityType.Deadline, filter=None):
     raw_graph_data = get_graph_edge_list(i, filter=filter)
     if raw_graph_data is None:
         return None     # log messages in get_graph_data
