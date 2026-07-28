@@ -1,8 +1,5 @@
 import heapq as hq
 
-# TODO - play with numbers, also consider case of infinite - like selecting 1 edge, then building assignment for day from it / around it
-# TODO - results for runs with different cluster limits
-
 PATIENCE = 2    # ? how many non-demanding top edges to go through until stopping current cluster formation
 
 # ? method returns assignment of edges into days, it does not make routes

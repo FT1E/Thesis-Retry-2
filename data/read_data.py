@@ -50,7 +50,7 @@ def get_graph_edge_list(i, filter = None):
         # * number of edges
         num_edges = int(re.sub(r'.*:\s*', '', lines[2]))
 
-        # TODO - DEPOT NODE
+        # ? DEPOT NODE
         # ! TAKE NOTE OF BELOW
         # * in the first few files it's 0, but not in all of them
         depot_node = int(re.sub(r'.*:\s*', '', lines[3]))

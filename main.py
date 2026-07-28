@@ -36,6 +36,7 @@ demanded_edge_list = get_graph_demanded_edges(GRAPH_ID, filter = vehicle['planni
 
 
 # todo - runs with different initial solution
+# todo - greedy dynamic - run with different cluster sizes, at least one run with infinite size
 
 # day_assignments, capacity_used = gs_run(demanded_edge_list, vehicle)
 

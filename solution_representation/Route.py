@@ -59,7 +59,6 @@ class Route:
     # def __lt__(self, other):
     #     return self.length < other.length
     
-    # TODO - NOTE BELOW CHANGE IN LOGGER.PY
     def __repr__(self):
         return f"\tRoute length ({self.length}) and demand ({self.demand})"
     

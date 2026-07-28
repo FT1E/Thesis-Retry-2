@@ -5,8 +5,6 @@ import sys
 sys.path.append('..')
 
 from util.routing_heuristic import calculate_cost
-# TODO - MIGHT NEED TO CHANGE STUFF - RE-READ THE CODE BELOW AFTER ALL SOLUTION CLASSES ARE FINISHED
-# 
 
 
 def print_day_assignment(day_assignment, adjacency_lists, vehicle, graph_id, capacity_used=None, v_distance_limit = None):
