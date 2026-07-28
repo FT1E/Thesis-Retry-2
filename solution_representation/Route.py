@@ -5,7 +5,7 @@ sys.path.append('..')
 from util.min_distances import min_distance_ee, min_distance_ne
 
 # for evaluating cost of route
-from solution_representation.Solution import VEHICLE_OVERLOAD_PENALTY
+from solution_representation.constants import VEHICLE_OVERLOAD_PENALTY
 
 # used to represent the routes/trips in a day which is part of the solution to SP-CARP
 # also used in the Clarke-Wright routing heuristic (modified to use edges instead of vertices as targets)
@@ -139,7 +139,7 @@ class Route:
 
         if new_edge in self.targets:
             # if edge is already in route
-            print(f"The {new_edge} is already in route for day {self.day.number} (day number)")
+            print(f"The {new_edge} is already in route for day {self.day.number}")
             # todo - maybe allow this but to put it in different place in route
             return False
     

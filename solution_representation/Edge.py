@@ -5,7 +5,7 @@ from enum import Enum
 
 sys.path.append('..')
 
-from solution_representation.Solution import EXPECTED_SPACING_PENALTY
+from solution_representation.constants import EXPECTED_SPACING_PENALTY
 
 PriorityType = Enum('PriorityType', {'Frequency' : 0, 'Deadline' : 1, 'Distance' : 2})
 
@@ -46,7 +46,7 @@ class Edge:
         # ? storing references to routes for that day, None if not serviced in that day
         # ? updated whenever service_days is updated - maybe write methods to call to update both, more readable code
         # ? numbers in service_days are indexes where below list has an actual Route object, everywhere else it's None
-        self.routes = None
+        self.routes = [None for _ in range(56)]
 
 
     # GENERAL METHODS
@@ -82,6 +82,8 @@ class Edge:
             case PriorityType.Deadline:
                 if self.freq <= 0:
                     return 2000     # ? sufficiently large number so that it's always larger than vehicles with positive frequency
+                if self.last_cleaning_day < 0:
+                    return -self.freq                       # more priority for edges not serviced at all
                 return self.freq + self.last_cleaning_day
             case PriorityType.Frequency:
                 return self.freq
@@ -121,34 +123,21 @@ class Edge:
     # for having a direct reference to a route for a day
     def set_route(self, day : int, route):
         self.routes[day] = route
-    
-    # returns true if spacing is neither too wide or too tight for services of this edge
-    # created a method so I don't rewrite the same code everywhere it's used
-    def spacing_check(self, spacing):
-        # check whether spacing is too wide or too tight for this edge with this frequency
-
-        # ceiling of frequency + 1 day for how many weeks in frequency
-        # ex. for freq = 7, upper_bound is 8, for freq = 3.5 upper bound is 4
-        upper_bound = math.ceil(self.freq) + self.freq // 7 
-
-        # similar to upper bound just subtract for weeks in duration
-        # for freq = 7, lower bound is 6, for freq = 3.5 lower bound is 3
-        lower_bound = math.floor(self.freq) - self.freq // 7
-
-        return (lower_bound <= spacing and spacing <= upper_bound)
             
     # METHODS FOR MANAGING SERVICE_DAYS
     
     # todo remember to pass route argument
     def add_service_day(self, day, route):
-
         # insert it into the right place
         # loop is O(n), but n is pretty small in this case so it's fine
         for i in range(len(self.service_days)):
             if self.service_days[i] > day:
                 self.service_days.insert(i, day)
-                return
-    
+                break
+            elif self.service_days[i] == day:
+                self.routes[day] = route
+                return True
+
         # in case it's the last service
         self.service_days.append(day)
         self.routes[day] = route
@@ -169,18 +158,41 @@ class Edge:
 
     # END METHODS FOR MANAGING SERVICE_DAYS
 
-    # for estimating cost of new solution by using cost of this edge and any affected in the operation
-    def spacing_cost(self, vehicle):
-        cost = 0
+    # COST EVALUATION
+
+    # returns true if spacing is neither too wide or too tight for services of this edge
+    # created a method so I don't rewrite the same code everywhere it's used
+    def spacing_check(self, spacing):
+        # check whether spacing is too wide or too tight for this edge with this frequency
+
+        # ceiling of frequency + 1 day for how many weeks in frequency
+        # ex. for freq = 7, upper_bound is 8, for freq = 3.5 upper bound is 4
+        upper_bound = math.ceil(self.freq) + self.freq // 7 
+
+        # similar to upper bound just subtract for weeks in duration
+        # for freq = 7, lower bound is 6, for freq = 3.5 lower bound is 3
+        lower_bound = math.floor(self.freq) - self.freq // 7
+
+        return (lower_bound <= spacing and spacing <= upper_bound)
+    
+    
+    def get_irregular_spacing_count(self):
+        count = 0
 
         # not checking spacing between start of planning and first service and last service and end of planning
         # only between two services performed
         for i in range(len(self.service_days) - 1):
             spacing = self.service_days[i+1] - self.service_days[i]
             if not self.spacing_check(spacing):
-                cost += EXPECTED_SPACING_PENALTY
+                count += 1
 
-        return cost
+        return count
+
+    # for estimating cost of new solution after operators, instead of doing full solution evaluate
+    def spacing_cost(self, vehicle):
+        return self.get_irregular_spacing_count() * cost
+        
+    # END COST EVALUATION
 
 
     # LS PHASE 1 
