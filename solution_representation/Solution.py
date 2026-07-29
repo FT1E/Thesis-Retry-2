@@ -90,8 +90,7 @@ class Solution:
             vehicle_count = max(vehicle_count, len(day.routes))
 
             for route in day.routes:
-                if route.length > self.vehicle['distance_limit'] or route.demand > self.vehicle['capacity']:
-                    overload_route_count += 1
+                overload_route_count += route.overload_size(self.vehicle)
 
 
         # number of spacings which exceed the expected spacing for the edge

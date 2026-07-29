@@ -113,26 +113,30 @@ class Route:
     def set_day(self, day):
         self.day = day
 
+
+
+    def overload_size(self, vehicle):
+        if self.length > vehicle['distance_limit']:            
+            overload = self.length - vehicle['distance_limit']
+            overload_cnt = math.ceil(overload / vehicle['distance_limit'])
+            
+        elif self.demand > vehicle['capacity']:
+            overload = self.demand - vehicle['capacity']
+            overload_cnt = math.ceil(overload / vehicle['capacity'])
+            
+        return overload_cnt
+
     # cost of the route in the solution
     #  == routing_cost + penalty * (how many times overload)
     # doing how many times overload, because one route may grow extra large while other routes are fine
     # this way "cheating" won't be tolerated in local search
     def evaluate(self, vehicle):
         cost = self.length
-        if self.length > vehicle['distance_limit']:
-            
-            overload = self.length - vehicle['distance_limit']
-            overload_cnt = math.ceil(overload / vehicle['distance_limit'])
-            
-            cost += overload_cnt * VEHICLE_OVERLOAD_PENALTY
-        elif self.demand > vehicle['capacity']:
-
-            overload = self.demand - vehicle['capacity']
-            overload_cnt = math.ceil(overload / vehicle['capacity'])
-            
-            cost += VEHICLE_OVERLOAD_PENALTY
+        cost += self.overload_size(vehicle) * VEHICLE_OVERLOAD_PENALTY
 
         return cost
+
+
 
     # inserts an edge at a position or before a given edge
     def insert_edge(self, new_edge, pos=None, edge_in_route=None):
