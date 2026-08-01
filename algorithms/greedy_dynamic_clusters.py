@@ -93,7 +93,8 @@ def run(demanded_edge_list, adjacency_lists, vehicle, CLUSTER_SIZE_LIMIT = 5):
                 
                 # remove edge from demanding edge_list - it will be added back through next_day_streets if needed by below code
                 if edge is not cluster_origin:
-                    demanded_edge_list.remove(edge)
+                    index = demanded_edge_list.index(edge)
+                    edge = demanded_edge_list[index]
 
 
                 # assign it to day
