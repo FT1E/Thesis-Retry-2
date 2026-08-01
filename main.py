@@ -18,6 +18,11 @@ from algorithms.greedy_static_clusters import run as gsc_run
 from solution_representation.Solution import Solution
 
 
+# local search
+from algorithms.local_search import phase_1
+from algorithms.local_search import phase_2
+from algorithms.local_search import phase_3_reverse_loops
+
 GRAPH_ID = 0
 VEHICLE_ID = 0
 
@@ -63,11 +68,29 @@ day_assignments, capacity_used = gdc_run(demanded_edge_list, adjacency_lists_dea
 
 # day_assignments, capacity_used = gsc_run(demanded_edge_list, adjacency_lists_distance, vehicle, GRAPH_ID)
 
-solution = Solution(day_assignments, demanded_edge_list, adjacency_lists_distance, vehicle, GRAPH_ID)
+solution = Solution(day_assignments, adjacency_lists_distance, vehicle, GRAPH_ID)
 
 # print(solution)
 
-print(f"Cost of solution: {solution.evaluate()}")
+print(f"Cost of initial solution: {solution.evaluate()}")
 
 
-solution.unsatisfied_edges(print_info=True)
+
+
+unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
+
+# under_s_edges = solution.get_under_satisfied_edges()
+# over_s_edges = solution.get_over_satisfied_edges()
+
+# print(f"Count of under satisfied edges: {len(under_s_edges)}")
+# print(f"Count of over satisfied edges: {len(over_s_edges)}")
+
+
+
+# solution.checking_references_1()
+# solution.checking_references_2()
+
+
+# better_solution, better_score = phase_1(solution)
+# better_solution, better_score = phase_2(solution)
+better_solution, better_score = phase_3_reverse_loops(solution)

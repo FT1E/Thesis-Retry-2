@@ -257,7 +257,7 @@ class Solution:
             setattr(new_solution, k, copy.deepcopy(v, memo))
 
         # set edge.routes in this solution
-        for sid, routes in original_edge_routes.items():
+        for sid, routes in enumerate(original_edge_routes):
             self.demanded_edges[sid].routes = routes
 
         # set routes in new copy

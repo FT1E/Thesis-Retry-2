@@ -1,10 +1,15 @@
 
 import sys
+import time
+import copy
 
 sys.path.append('..')
 
 from solution_representation.Route import Route
 
+
+# ! UNCOMMENT ASSERTIONS IF BUGS POP UP
+# ? ADD ASSERTIONS FOR OTHER OPS
 
 # OPERATOR METHODS
 # OPERATOR AND UNDO_OPERATOR FOR EACH
@@ -23,16 +28,37 @@ def add_service_operator(solution, d1, edge):
     if d1 in edge.service_days:
         return None
 
-    solution.days[d1].add_edge(edge)
+    # assert d1 not in edge.service_days
+    # assert edge.routes[d1] is None
+    # assert edge not in solution.days[d1].edges
+    # assert solution.days[d1].get_edge_route(edge) is None
+    # assert not solution.days[d1].edge_in_day(edge)
+    
+    
+    assert solution.days[d1].add_edge(edge)
 
-    # todo - assert that edge is not in day and that it's .routes array has route None at this position
+
+    # assert d1 in edge.service_days
+    # assert edge.routes[d1] is not None
+    # assert solution.days[d1].edge_in_day(edge)
 
     # ? nothing needed for undo - just remove the service
     return True
 
 def undo_add_service_operator(solution, d1, edge):
     # just remove the added service
+
+    # assert d1 in edge.service_days
+    # assert edge.routes[d1] is not None
+    # assert solution.days[d1].edge_in_day(edge)
+
+
     remove_service_operator(solution, d1, edge)
+
+    # assert d1 not in edge.service_days
+    # assert edge.routes[d1] is None
+    # assert not solution.days[d1].edge_in_day(edge)
+
 
 
 # ? remove a service for edge in day d1
@@ -41,13 +67,18 @@ def remove_service_operator(solution, d1, edge):
     
     # if edge has no route reference for day d1, then it's probably not serviced
     
-    route = edge.routes[d1]
+    route = solution.days[d1].get_edge_route(edge)
     if route is None:
         return None
 
-    pos = route.index(edge)
+    pos = route.targets.index(edge)
     
-    # todo - assert that edge.routes[d1] is None, its service_days has no d1, and day has no edge
+    assert solution.days[d1].remove_edge(edge)
+
+
+    # assert d1 not in edge.service_days
+    # assert edge.routes[d1] is None
+    # assert not solution.days[d1].edge_in_day(edge)
 
 
 
@@ -56,9 +87,13 @@ def remove_service_operator(solution, d1, edge):
 
 def undo_remove_service_operator(solution, d1, edge, route, pos):
 
-    solution.days[d1].add_edge(edge, route, pos)
+    solution.days[d1].insert_edge(edge, route, pos)
 
-    # todo - assert that it's working fine
+    # assert d1 in edge.service_days
+    # assert edge.routes[d1] is route
+    # assert pos == route.targets.index(edge)
+    # assert solution.days[d1].edge_in_day(edge)
+
 
 
 # ? move a service for an edge from day d1 to day d2
@@ -66,7 +101,8 @@ def move_service_operator(solution, d1, d2, edge):
     #   - if edge is serviced on day d1
     #   - if edge is not serviced on day d2 and d2 is a work day
 
-    if edge.routes[d1] is None or edge.routes[d2] is not None or d2 % 7 >= 5:
+    # 
+    if d1 not in edge.service_days or d2 in edge.service_days or d2 % 7 >= 5:
         return None
 
     route, pos = remove_service_operator(solution, d1, edge)
@@ -90,10 +126,17 @@ def swap_services_operator(solution, edge_1, edge_2):
     if edge_1.freq != edge_2.freq:
         return None
 
+    # before_e1 = edge_1.service_days.copy()
+    # before_e2 = edge_2.service_days.copy()
+
+    # assert [solution.days[d].edge_in_day(edge_1) for d in edge_1.service_days] == [True for _ in edge_1.service_days]
+    # assert [solution.days[d].edge_in_day(edge_2) for d in edge_2.service_days] == [True for _ in edge_2.service_days]
+
+
     all_days = set(edge_1.service_days + edge_2.service_days)
 
-    only_edge_1_days = all_days.difference(edge_2.service_days)
-    only_edge_2_days = all_days.difference(edge_1.service_days)
+    only_edge_1_days = list(all_days.difference(edge_2.service_days))
+    only_edge_2_days = list(all_days.difference(edge_1.service_days))
 
     edge_1_routes = []
     edge_2_routes = []
@@ -102,34 +145,34 @@ def swap_services_operator(solution, edge_1, edge_2):
         route, pos = remove_service_operator(solution, day, edge_1)
         add_service_operator(solution, day, edge_2)
 
-        edge_1_routes.routes.append((route, pos))
+        edge_1_routes.append((route, pos))
 
     for day in only_edge_2_days:
         route, pos = remove_service_operator(solution, day, edge_2)
         add_service_operator(solution, day, edge_1)
 
-        edge_2_routes.routes.append((route, pos))
+        edge_2_routes.append((route, pos))
 
     
+    # assert edge_2.service_days == before_e1
+    # assert edge_1.service_days == before_e2
+
     return edge_1_routes, edge_2_routes
 
 def undo_swap_services_operator(solution, edge_1, edge_2, edge_1_routes, edge_2_routes):
     # ? similar argument for move_service, insert the removed services into the same routes and same positions
 
     for route, pos in edge_1_routes:
-        day = route.day.number
 
-        undo_remove_service_operator(solution, day, edge_1, route, pos)
-        undo_add_service_operator(solution, day, edge_2)
+        undo_remove_service_operator(solution, route.day, edge_1, route, pos)
+        undo_add_service_operator(solution, route.day, edge_2)
 
     for route, pos in edge_2_routes:
-        day = route.day.number
         
-        undo_remove_service_operator(solution, day, edge_2, route, pos)
-        undo_add_service_operator(solution, day, edge_1)
+        undo_remove_service_operator(solution, route.day, edge_2, route, pos)
+        undo_add_service_operator(solution, route.day, edge_1)
     
 
-    # todo - assert that edges have their service days swapped and are only in the original service_days, not in all of them
 
 
 # ? Take 2 routes, cut the routes in 2 (or don't), and merge a cut of a route with the cut of the other route
@@ -140,10 +183,10 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
     if route_1 is route_2:
         return None
 
-    if route_1.day.number != route_2.day.number:
+    if route_1.day != route_2.day:
         return None
 
-    day = route_1.day
+    day = solution.days[route_1.day]
     
     # working only with the routes
     # not removing and adding services to the day, since it's the same day
@@ -204,11 +247,12 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
         edge.routes[day.number] = res_r2
 
 
-    return route_1, route_2, cnt
+    return cnt
 
 
 def undo_two_opt_routes_operator(solution, route_1, route_2, route_cnt):
 
+    day = solution.days[route_1.day]
     for _ in range(route_cnt):
         day.remove_route(route_id = -1)
 
@@ -216,10 +260,10 @@ def undo_two_opt_routes_operator(solution, route_1, route_2, route_cnt):
     day.add_route(route_2)
 
     for edge in route_1.targets:
-        edge.routes[route_1.day.number] = route_1
+        edge.routes[route_1.day] = route_1
 
     for edge in route_2.targets:
-        edge.routes[route_2.day.number] = route_2
+        edge.routes[route_2.day] = route_2
 
 
 # ? Move a single service from one route to a different route in the same day
@@ -228,15 +272,15 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
     #   - and they are different routes
 
     
-    if route_a is route_b:
+    if route_1 is route_2:
         return None
 
-    if route_a.day.number != route_b.day.number:
+    if route_1.day != route_2.day:
         return None
 
     # todo - can remove below out of bound checks if that is done before calling the operator
     # todo - or wrap them in try except blocks when accessing
-    if edge_1_id >= len(route_a.targets):
+    if edge_1_id >= len(route_1.targets):
         return None
 
 
@@ -244,7 +288,7 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
     route_1.remove_edge(pos = edge_1_id)
     route_2.insert_edge(edge_1, pos = edge_2_id)   
 
-    edge_1.routes[route_2.day.number] = route_2
+    edge_1.routes[route_2.day] = route_2
 
 
     return True
@@ -284,6 +328,16 @@ def undo_route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, rout
 
 # END OPERATOR METHODS
 
+# UTIL METHODS
+def evaluate_neighbour(neighbour, current_best_solution, best_score):
+    neighbour_score = neighbour.evaluate()
+    if neighbour_score < best_score:
+        current_best_solution = copy.deepcopy(neighbour)
+        best_score = neighbour_score
+
+    return current_best_solution, best_score
+# END UTIL METHODS
+
 
 # PHASE METHODS
 
@@ -295,8 +349,61 @@ def phase_1(working):
     current_best_solution = working
     best_score = original_score
 
-    # todo - iterations, apply ops as long as there is some improvement
+    work_days = set(working.get_work_days())
 
+    iteration_count = 0
+    iteration_avg_time = 0
+
+    improved = True
+
+    while improved:
+        improved = False
+        
+        iteration_count += 1
+
+        iter_start = time.time()
+
+        # reset values at start of iteration
+
+        # adding a service to edges with too little services
+        under_satisfied_edges = working.get_under_satisfied_edges()
+        for edge in under_satisfied_edges:
+            no_service_days = work_days.difference(edge.service_days)
+            for day in no_service_days:
+                if add_service_operator(working, day, edge):
+                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)                    
+                    undo_add_service_operator(working, day, edge)
+            
+
+        # removing a service of edges with too many services
+        over_satisfied_edges = working.get_over_satisfied_edges()
+        for edge in over_satisfied_edges:
+            for day in edge.service_days:
+                res = remove_service_operator(working, day, edge)
+                if res is not None:
+                    route, pos = res
+                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                    undo_remove_service_operator(working, day, edge, route, pos)
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) + last_iteration_time / iteration_count
+
+        if iteration_count % 10 == 1:
+            print(f"Phase 1 mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 1 ended!")
+    print("Phase 1 Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+    
     return current_best_solution, best_score
 
 
@@ -306,8 +413,71 @@ def phase_2(working):
 
     current_best_solution = working
     best_score = original_score
+    
+    work_days = set(working.get_work_days())
+    
+    iteration_count = 0
+    iteration_avg_time = 0
 
     # todo - iterations, apply ops as long as there is some improvement
+    improved = True
+    while improved:
+        improved = False
+
+        iteration_count += 1
+
+        iter_start = time.time()
+
+        # move_service operator
+        for edge in working.demanded_edges:
+            no_service_days = work_days.difference(edge.service_days)
+
+            for d1 in edge.service_days:
+                for d2 in no_service_days:
+
+                    res = move_service_operator(working, d1, d2, edge)
+                    if res is not None:
+                        route, pos = res
+                        current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                        undo_move_service_operator(working, d1, d2, edge, route, pos)
+
+
+        # swap_services operator
+        for bucket in working.frequency_buckets.values():
+            
+            for i in range(len(bucket)):
+                edge_1 = bucket[i]
+
+                for j in range(i+1, len(bucket)):
+                    edge_2 = bucket[j]
+
+                    res = swap_services_operator(working, edge_1, edge_2)
+                    if res is not None:
+                        e1_routes, e2_routes = res
+                        current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                        undo_swap_services_operator(working, edge_1, edge_2, e1_routes, e2_routes)
+            
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) + last_iteration_time / iteration_count
+
+        if iteration_count % 10 == 1:
+            print(f"Phase 2 mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 2 ended!")
+    print("Phase 2 Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+
+
 
     return current_best_solution, best_score
 
@@ -324,6 +494,7 @@ def phase_3(working):
     work_days = working.get_work_days()
 
     # better locality if iterating on each day repeatedly as long as there is an improvement, then continue on to next day
+    # todo - one test run with the other way around for bug testing - method below
     for day in work_days:
 
         improved = True
@@ -333,4 +504,250 @@ def phase_3(working):
     return current_best_solution, best_score
 
 
+
+# ? PHASE 3 - route operators, two_opt, move (single) and move_pair, best move applied for each day
+def phase_3_reverse_loops(working):
+    original_score = working.evaluate()
+    working_score = original_score
+
+    current_best_solution = working
+    best_score = original_score
+
+    
+    iteration_count = 0
+    iteration_avg_time = 0
+
+    # todo - iterations, apply ops as long as there is some improvement
+    
+    work_days = working.get_work_days()
+
+    # todo - one test run with the other way around for bug testing
+    improved = True
+    while improved:
+        improved = False
+    
+        iteration_count += 1
+        iter_start = time.time()
+
+
+        for day in work_days:
+
+            routes = working.days[day].routes.copy()
+
+            for i_count, route1 in enumerate(routes):
+                for r1_pos in range(len(route1.targets)):
+
+                    can_do_pair_move = r1_pos + 1 < len(route1.targets)
+
+                    for j_count, route2 in enumerate(routes):
+                        if i_count == j_count:
+                            continue
+                        
+                        can_do_two_opt = i_count < j_count  # to perform this op on every unordered pair of routes
+                        # other ops perform work on every ordered pair of routes
+
+                        for r2_pos in range(len(route2.targets)):
+
+                            if can_do_two_opt:
+                                res = two_opt_routes_operator(working, route1, route2, r1_pos, r2_pos)
+                                if res is not None:
+                                    cnt = res
+                                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                                    undo_two_opt_routes_operator(working, route1, route2, cnt)
+
+                            if route_move_service_operator(working, r1_pos, r2_pos, route1, route2):
+                                current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                                undo_route_move_service_operator(working, r1_pos, r2_pos, route1, route2)
+
+                            if can_do_pair_move:
+                                if route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2):
+                                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                                    undo_route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2)
+            
+            working = current_best_solution
+            working_score = best_score
+
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) + last_iteration_time / iteration_count
+
+        if iteration_count % 10 == 1:
+            print(f"Phase 3 mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 3 ended!")
+    print("Phase 3 Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+
+
+    return current_best_solution, best_score
+
+
+
 # END PHASE METHODS
+
+
+
+# PHASE METHODS - IMPROVED VERSIONS
+
+# ? IMPROVED PHASE 1 - add_service_operator and remove_service_operator
+# todo - apply best operation per edge, not for whole solution at each iteration
+def improved_phase_1(working):
+    original_score = working.evaluate()
+
+    current_best_solution = working
+    best_score = original_score
+
+    work_days = set(working.get_work_days())
+
+    iteration_count = 0
+    iteration_avg_time = 0
+
+    improved = True
+
+    # best add service op day for each edge (which is under-satisfied)
+    # [0] - best day
+    # [1] - score if op applied with best day
+    best_as_op = None
+
+    # best remove service op day for each edge (which is over-satisfied)
+    best_rs_op = None
+
+
+    while improved:
+        improved = False
+        
+        iteration_count += 1
+
+        iter_start = time.time()
+
+        # reset values at start of iteration
+
+        # adding a service to edges with too little services
+        under_satisfied_edges = working.get_under_satisfied_edges()
+        for edge in under_satisfied_edges:
+            no_service_days = work_days.difference(edge.service_days)
+            for day in no_service_days:
+                if add_service_operator(working, day, edge):
+                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)                    
+                    undo_add_service_operator(working, day, edge)
+            
+
+        # removing a service of edges with too many services
+        over_satisfied_edges = working.get_over_satisfied_edges()
+        for edge in over_satisfied_edges:
+            for day in edge.service_days:
+                res = remove_service_operator(working, day, edge)
+                if res is not None:
+                    route, pos = res
+                    current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                    undo_remove_service_operator(working, day, edge, route, pos)
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) + last_iteration_time / iteration_count
+
+        if iteration_count % 10 == 1:
+            print(f"Phase 1 mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 1 ended!")
+    print("Phase 1 Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+    
+    return current_best_solution, best_score
+
+# ? PHASE 2 - move_service_operator and swap_services_operator
+# todo - save estimate costs of op2, and re-calculate when something changes
+def improved_phase_2(working):
+    original_score = working.evaluate()
+
+    current_best_solution = working
+    best_score = original_score
+    
+    work_days = set(working.get_work_days())
+    
+    iteration_count = 0
+    iteration_avg_time = 0
+
+    # todo - iterations, apply ops as long as there is some improvement
+    improved = True
+    while improved:
+        improved = False
+
+        iteration_count += 1
+
+        iter_start = time.time()
+
+        # move_service operator
+        for edge in working.demanded_edges:
+            no_service_days = work_days.difference(edge.service_days)
+
+            for d1 in edge.service_days:
+                for d2 in no_service_days:
+
+                    res = move_service_operator(working, d1, d2, edge)
+                    if res is not None:
+                        route, pos = res
+                        current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                        undo_move_service_operator(working, d1, d2, edge, route, pos)
+
+
+        # swap_services operator
+        for bucket in working.frequency_buckets.values():
+            
+            for i in range(len(bucket)):
+                edge_1 = bucket[i]
+
+                for j in range(i+1, len(bucket)):
+                    edge_2 = bucket[j]
+
+                    res = swap_services_operator(working, edge_1, edge_2)
+                    if res is not None:
+                        e1_routes, e2_routes = res
+                        current_best_solution, best_score = evaluate_neighbour(working, current_best_solution, best_score)
+                        undo_swap_services_operator(working, edge_1, edge_2, e1_routes, e2_routes)
+            
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) + last_iteration_time / iteration_count
+
+        if iteration_count % 10 == 1:
+            print(f"Phase 2 mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 2 ended!")
+    print("Phase 2 Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+
+
+
+    return current_best_solution, best_score
+
+
+
+# END PHASE METHODS - IMPROVED VERSIONS
+
