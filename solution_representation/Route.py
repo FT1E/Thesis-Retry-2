@@ -116,6 +116,7 @@ class Route:
 
 
     def overload_size(self, vehicle):
+        overload_cnt = 0
         if self.length > vehicle['distance_limit']:            
             overload = self.length - vehicle['distance_limit']
             overload_cnt = math.ceil(overload / vehicle['distance_limit'])
@@ -143,7 +144,7 @@ class Route:
 
         if new_edge in self.targets:
             # if edge is already in route
-            print(f"The {new_edge} is already in route for day {self.day.number}")
+            print(f"The {new_edge} is already in route for day {self.day}")
             # todo - maybe allow this but to put it in different place in route
             return False
     
@@ -161,6 +162,8 @@ class Route:
         self.demand += new_edge.demand
         self.calculate_length()
         
+        new_edge.routes[self.day] = self
+
         return True
 
 
@@ -179,6 +182,8 @@ class Route:
         self.demand -= edge.demand
         self.calculate_length()
         
+        edge.routes[self.day] = None
+
         return True
     
     def merge(self, other):

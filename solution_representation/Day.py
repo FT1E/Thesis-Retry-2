@@ -58,11 +58,8 @@ class Day:
         self.routes = info['routes']
 
         for route in self.routes:
-            route.set_day(self)
+            route.set_day(self.number)
 
-            # add a reference to route for this day directly
-            for edge in route.targets:
-                edge.add_service_day(self.number, route)
 
 
     # END INITIAL ROUTE GENERATION
@@ -92,7 +89,8 @@ class Day:
             self.edges.append(edge)
             return True
 
-        print(f"\nTrying to add {edge} to day {self.number}, but it's already added.\n")
+        print(f"\nTrying to add {edge} to day {self.number}, but it's already added.")
+        print(f"Service days: {edge.service_days}\n")
         return False
 
     def remove_edge_in_list(self, edge):
@@ -107,7 +105,7 @@ class Day:
     def add_route(self, route):
         if len(route.targets) > 0 and route not in self.routes:
             self.routes.append(route)
-            route.set_day(self)
+            route.set_day(self.number)
             return True
         return False
 
@@ -128,39 +126,46 @@ class Day:
         return True
 
     
-    # add a new edge to the day, i.e. add a new service for the edge
-    def add_edge(self, edge, route=None, pos=None):
+    # ? add a new edge to the day, i.e. add a new service for the edge
+    # ? use insert edge if adding to a specific route in a specific position
+    def add_edge(self, edge):
         # - edge is added in a random route at the end
-        # - or the route and position can be specified - for undo operations
 
         # if edge is already in edge list, then it's already in some route
         if not self.add_edge_in_list(edge):
             return False
 
-        
-        if route is not None:
-            # if a specific route is given - insert it in it and finish
-            # this is for undo
-            route.insert_edge(edge, pos = pos)
-            if len(route) == 1:
-                self.add_route(route)
-        
+    
+        # else either make a new route if day has no routes, or insert it in a random one
+        if len(self.routes) == 0:
+            # if day has no routes
+            route = Route([edge])
+            self.add_route(route)
         else:
-            # else either make a new route if day has no routes, or insert it in a random one
-            if len(self.routes) == 0:
-                # if day has no routes
-                route = Route([edge], day = self)
-                self.add_route(route)
-            else:
-                # add it to a random route
-                # other operators will move it to a better route
-                route = random.choice(self.routes)
-                route.insert_edge(edge)
+            # add it to a random route
+            # other operators will move it to a better route
+            route = random.choice(self.routes)
+            route.insert_edge(edge)
 
-        edge.add_service_day(self.number, route)
+        edge.add_service_day(self.number)
         
         return True    
         
+    # ? insert edge at a specific position in a specific route
+    # ? add_edge just adds it to a random route at the end
+    def insert_edge(self, edge, route, pos):
+        # if edge is already in edge list, then it's already in some route
+        if not self.add_edge_in_list(edge):
+            return False
+
+        # this is for undo
+        route.insert_edge(edge, pos = pos)
+        if len(route.targets) == 1:
+            self.add_route(route)
+
+        edge.add_service_day(self.number)
+        
+
 
     # remove an edge from the day, i.e. remove the service of an edge in a day
     def remove_edge(self, edge):
@@ -175,6 +180,8 @@ class Day:
 
         self.remove_edge_in_list(edge)
         affected_route.remove_edge(edge)
+        edge.remove_service_day(self.number)
+
 
         if len(affected_route.targets) == 0:
             self.remove_route(affected_route)
@@ -188,8 +195,6 @@ class Day:
 
         for route in self.routes:
             if edge in route.targets:
-                # calling below function will also make sure that service days is also correct
-                edge.add_service_day(self.number, route)
                 return route
 
         if edge in self.edges:

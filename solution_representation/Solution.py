@@ -4,6 +4,8 @@
 
 import sys
 import math
+import copy
+
 sys.path.append('..')
 from solution_representation.Day import Day
 from solution_representation.constants import VEHICLE_WEIGHT, VEHICLE_OVERLOAD_PENALTY, EXPECTED_SERVICES_PENALTY, EXPECTED_SPACING_PENALTY
@@ -23,16 +25,9 @@ class Solution:
 
     
     # ? NOTE - adjacency lists should have edges with priority type distance
-    def __init__(self, day_assignments, demanded_edges, adjacency_lists, vehicle, graph_id):
+    def __init__(self, day_assignments, adjacency_lists, vehicle, graph_id):
         
-        self.demanded_edges = demanded_edges
-
-        for i, edge in enumerate(self.demanded_edges):
-            edge.sid = i
-            
-            # just create an empty list with size equal to the number of days
-            # each day then sets its position in it to reference the route for the edge in that day
-            edge.init_routes(vehicle)     
+        self.demanded_edges = []    
 
 
         self.graph_id = graph_id
@@ -41,6 +36,19 @@ class Solution:
         for day_assignment in day_assignments:
             self.days.append(Day(day_id, day_assignment, adjacency_lists, vehicle, graph_id))
             day_id += 1
+            
+            for edge in day_assignment:
+                if edge not in self.demanded_edges:
+                    self.demanded_edges.append(edge)
+                
+        
+        for i, edge in enumerate(self.demanded_edges):
+            edge.sid = i
+            
+            # just create an empty list with size equal to the number of days
+            # each day then sets its position in it to reference the route for the edge in that day
+            edge.init_routes(vehicle)
+
 
         # ? below just for reference for calculating routing cost
         self.vehicle = vehicle
@@ -178,8 +186,86 @@ class Solution:
 
 
 
-    def checking_references(self):
-        print("For checking specific reference trees. Method is empty right now.")
-        pass
+    def checking_references_1(self):
+        print("Checking that every edge is in its service days and not in its no service days")
+        
+        work_days = set(self.get_work_days())
+        for edge in self.demanded_edges:
+
+            for d in edge.service_days:
+                try:
+                    assert self.days[d].edge_in_day(edge)
+                except Exception as e:
+                    print(e)
+                    print(f"{edge}")
+                    print(f"not found in day {d}")
+                    print(f"edge service days {edge.service_days}")
+
+
+            no_service_days = list(work_days.difference(edge.service_days))
+            for d in no_service_days:
+                try:
+                    assert not self.days[d].edge_in_day(edge)
+                except Exception as e:
+                    print(e)
+                    print(f"{edge}")
+                    print(f"found in day {d}")
+                    print(f"edge service days {edge.service_days}")
+                
+        print("References are fine!")
+
+    def checking_references_2(self):
+        print("Checking that edges in day.edges are the same edges as in solution.demanded edges")
+        
+        for day in self.days:
+            for edge in day.edges:
+                di = self.demanded_edges.index(edge)
+                if edge is not self.demanded_edges[di]:
+                    print(f"{edge} has mismatching references")
+                    print(f"Day edge: {edge}")
+                    print(f"Solution edge: {self.demanded_edges[di]}")
+                    print(f"day.edges edge service days: {edge.service_days}")
+                    print(f"solution.demanded_edges edge service days: {self.demanded_edges[di].service_days}")
+                
+        print("References are fine!")
+
 
     # END LOCAL SEARCH METHODS
+
+
+    # CUSTOM DEEPCOPY
+    # because of circular references due to edge.routes
+    # Route has edges in Route.targets
+    # those edges have the same route in edge.routes[route.day]
+    def __deepcopy__(self, memo):
+        
+        # get edge.routes array for each edge
+        # and set it to none
+
+        original_edge_routes = [None] * len(self.demanded_edges)
+        for edge in self.demanded_edges:
+            original_edge_routes[edge.sid] = edge.routes
+            edge.routes = [None] * len(edge.routes)
+
+
+        # normal deep copy, copied edge.routes will be None-s
+        class_copy = self.__class__
+        new_solution = class_copy.__new__(class_copy)
+        memo[id(self)] = new_solution
+
+        for k, v in self.__dict__.items():
+            setattr(new_solution, k, copy.deepcopy(v, memo))
+
+        # set edge.routes in this solution
+        for sid, routes in original_edge_routes.items():
+            self.demanded_edges[sid].routes = routes
+
+        # set routes in new copy
+        for day in new_solution.days:
+            for route in day.routes:
+                for edge in route.targets:
+                    edge.routes[day.number] = route
+                    
+        return new_solution
+
+    # END CUSTOM DEEPCOPY

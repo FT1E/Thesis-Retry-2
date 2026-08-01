@@ -57,11 +57,12 @@ class Edge:
 
     # below to avoid assigning a duplicate edge in the same day
     # below to differentiate duplicate edges
+    # TODO - use a special id if two edges can have same endpoints and same frequency
     def __eq__(self, value):
         if not isinstance(value, Edge):
             return False
-        return self.number == value.number and ((self.start_node == value.start_node and self.end_node == value.end_node) or (self.start_node == value.end_node and self.end_node == value.start_node))
-
+        return self.freq == value.freq and ((self.start_node == value.start_node and self.end_node == value.end_node) or (self.start_node == value.end_node and self.end_node == value.start_node))
+        # return self.sid == value.sid
 
     # END GENERAL METHODS
 
@@ -127,21 +128,19 @@ class Edge:
     # METHODS FOR MANAGING SERVICE_DAYS
     
     # todo remember to pass route argument
-    def add_service_day(self, day, route):
+    def add_service_day(self, day):
         # insert it into the right place
         # loop is O(n), but n is pretty small in this case so it's fine
         for i in range(len(self.service_days)):
             if self.service_days[i] > day:
                 self.service_days.insert(i, day)
-                break
-            elif self.service_days[i] == day:
-                self.routes[day] = route
                 return True
+            elif self.service_days[i] == day:
+                return False
 
         # in case it's the last service
         self.service_days.append(day)
-        self.routes[day] = route
-
+        return True
         # ? below comments for previous implementation
         # todo - set route
         # todo - find all places where route of edge is accessed for day and change it
@@ -151,7 +150,6 @@ class Edge:
 
     def remove_service_day(self, day):
         self.service_days.remove(day)
-        self.routes[day] = None
 
     def swap_service_days(self, other_edge : Edge):
         self.service_days, other_edge.service_days = other_edge.service_days, self.service_days
