@@ -19,10 +19,7 @@ from solution_representation.Solution import Solution
 
 
 # local search
-from algorithms.local_search import phase_1
-from algorithms.local_search import phase_2
-from algorithms.local_search import phase_3_reverse_loops
-
+from algorithms.local_search import run as run_ls
 GRAPH_ID = 0
 VEHICLE_ID = 0
 
@@ -79,18 +76,5 @@ print(f"Cost of initial solution: {solution.evaluate()}")
 
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
-# under_s_edges = solution.get_under_satisfied_edges()
-# over_s_edges = solution.get_over_satisfied_edges()
 
-# print(f"Count of under satisfied edges: {len(under_s_edges)}")
-# print(f"Count of over satisfied edges: {len(over_s_edges)}")
-
-
-
-# solution.checking_references_1()
-# solution.checking_references_2()
-
-
-# better_solution, better_score = phase_1(solution)
-# better_solution, better_score = phase_2(solution)
-better_solution, better_score = phase_3_reverse_loops(solution)
+ls_improved_solution = run_ls(solution)

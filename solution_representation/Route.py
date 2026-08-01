@@ -33,6 +33,18 @@ class Route:
 
     # GENERAL METHODS
 
+    def __eq__(self, other):
+        # full == when targets are same
+        # checking length and demand before that, since it's highly unlikely that 2 routes have same length and demand if they have different targets
+        if not isinstance(other, Route):
+            return False
+        elif self.length != other.length:
+            return False
+        elif self.demand != other.demand:
+            return False
+        else:
+            return self.targets == other.targets
+
     def calculate_length(self):
         if len(self.targets) == 0:
             self.length = 0

@@ -94,7 +94,7 @@ def get_graph_edge_list(i, filter = None):
             cnt = 0
             for freq in edge_frequencies:
                 if filter is not None and freq > filter:
-                    # skip edges with frequecny higher than planning period
+                    # skip edges with frequency higher than planning period
                     # example planning period is 14 days, but there is an edge with frequency 56
                     # no edge will be skipped when vehicle with longest planning period is used
                     continue

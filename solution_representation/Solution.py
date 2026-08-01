@@ -229,6 +229,13 @@ class Solution:
                 
         print("References are fine!")
 
+    def checking_references_3(self):
+        print("Checking that all routes in day.routes have targets length > 0")
+        for day in self.days:
+            for route in day.routes:
+                assert len(route.targets) > 0
+
+        print("Routes are fine!")
 
     # END LOCAL SEARCH METHODS
 
