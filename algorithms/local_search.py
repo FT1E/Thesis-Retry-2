@@ -808,17 +808,20 @@ def improved_phase_1(working):
                     undo_remove_service_operator(working, day, edge, route, pos)
 
         # apply best ops for each edge
+        # if they are empty then improved won't be set to true and loop will end
 
         for sid, res in best_as_op.items():
             edge = working.demanded_edges[sid]
             day = res[0]
             add_service_operator(working, day, edge)
+            improved = True
 
         
         for sid, res in best_rs_op.items():
             edge = working.demanded_edges[sid]
             day = res[0]
             remove_service_operator(working, day, edge)
+            improved = True
 
         # ? should be fine to do it without deepcopy, but doing it just in case
         current_best_solution = copy.deepcopy(working)
