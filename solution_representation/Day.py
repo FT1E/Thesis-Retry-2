@@ -1,11 +1,13 @@
 
 import sys
 import random
+import copy
 
 sys.path.append('..')
 
 from util.routing_heuristic import calculate_cost
 from solution_representation.Route import Route
+from solution_representation.constants import VEHICLE_OVERLOAD_PENALTY, VEHICLE_WEIGHT
 
 # used in the solution representation to represent a single day of the solution consisting of routes in the day
 # also has a list of edges, which can be inferred from the routes
@@ -81,6 +83,20 @@ class Day:
             routing_cost += route.length
         
         return routing_cost
+
+    def evaluate_routes(self):
+        # routing cost + overload route penalty + weight * number of routes
+        routing_cost = 0
+        penalty = 0
+        for route in self.routes.copy():
+
+            if len(route.targets) == 0:
+                self.remove_route(route)
+                continue
+            penalty += route.overload_size(self.vehicle)
+            routing_cost += route.length
+        
+        return routing_cost + penalty * VEHICLE_OVERLOAD_PENALTY + len(self.routes) * VEHICLE_WEIGHT
     
     # END COST EVALUATION
 
@@ -189,8 +205,8 @@ class Day:
         return edge
     
 
-    def get_edge_route(self, edge):
-        if edge.routes[self.number] is not None:
+    def get_edge_route(self, edge, search = False):
+        if not search and edge.routes[self.number] is not None:
             return edge.routes[self.number]
 
         for route in self.routes:

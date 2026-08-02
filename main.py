@@ -21,7 +21,7 @@ from solution_representation.Solution import Solution
 # local search
 from algorithms.local_search import run as run_ls
 GRAPH_ID = 0
-VEHICLE_ID = 0
+VEHICLE_ID = 11
 
 
 DYNAMIC_CLUSTER_SIZE_LIMIT = 5
@@ -77,4 +77,15 @@ print(f"Cost of initial solution: {solution.evaluate()}")
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
 
-ls_improved_solution = run_ls(solution)
+ls_score, ls_improved_solution = run_ls(solution)
+
+
+print("\n----- MARKER - SOLUTION PRINTED BELOW -------\n")
+
+print(ls_improved_solution)
+
+print("\n----- MARKER - SOLUTION PRINTED ABOVE -------\n")
+
+
+print(f"LS return score: {ls_score}")
+print(f"Final solution score: {ls_improved_solution.evaluate()}")

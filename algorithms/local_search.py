@@ -3,10 +3,17 @@ import sys
 import time
 import datetime
 import copy
+from threading import Thread, Lock
+from queue import Queue
+
+printing_lock = Lock()
 
 sys.path.append('..')
 
 from solution_representation.Route import Route
+
+
+# TODO - modify two-opt, undo two-opt and route-move to use Day object instead of solution
 
 
 # ! UNCOMMENT ASSERTIONS IF BUGS POP UP
@@ -196,7 +203,7 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
     # assert route_2 in day.routes
 
 
-    cost_before = route_1.evaluate(solution.vehicle) + route_2.evaluate(solution.vehicle)
+    cost_before = route_1.evaluate(day.vehicle) + route_2.evaluate(day.vehicle)
 
 
     r1_half1 = Route(route_1.targets[:r1_cutpoint], day = route_1.day)
@@ -212,8 +219,8 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
     b_route1 = r1_half1.merge(r2_half2)
     b_route2 = r1_half2.merge(r2_half1)
 
-    cost_a = a_route1.evaluate(solution.vehicle) + a_route2.evaluate(solution.vehicle)
-    cost_b = b_route1.evaluate(solution.vehicle) + b_route2.evaluate(solution.vehicle)
+    cost_a = a_route1.evaluate(day.vehicle) + a_route2.evaluate(day.vehicle)
+    cost_b = b_route1.evaluate(day.vehicle) + b_route2.evaluate(day.vehicle)
 
     cost_after = min(cost_a, cost_b)
 
@@ -304,9 +311,10 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
 
     edge_1.routes[route_2.day] = route_2
 
+    day = solution.days[route_1.day]
 
     if len(route_1.targets) == 0:
-        solution.days[route_1.day].remove_route(route_1)
+        day.remove_route(route_1)
 
     # the below if only can happen in undo version of this operator
     # route had only 1 target and that was moved with the normal version of this operator
@@ -314,11 +322,11 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
     # then undo version calls this operator (for convenience to not copy paste code) 
     # and the route needs to be added back
     if len(route_2.targets) == 1:
-        solution.days[route_2.day].add_route(route_2)
+        day.add_route(route_2)
 
 
     # assert route_2 in edge_1.routes
-    # assert route_2 is edge_1.routes[route_1.day]
+    # assert route_2 is edge_1.routes[route_2.day]
     # assert route_2 == edge_1.routes[route_2.day]
 
     return True
@@ -843,7 +851,7 @@ def improved_phase_2(working):
     ss_estimates = dict()
 
     # calculate once initially
-    for bucket in working.frequency_buckets:
+    for bucket in working.frequency_buckets.values():
         for i in range(len(bucket)):
             edge_1 = bucket[i]
             for j in range(i+1, len(bucket)):
@@ -903,8 +911,8 @@ def improved_phase_2(working):
         # evaluate the application of swap_services
         # since this is just an estimate
         if min_pair is not None:
-            edge_1 = pair[0]
-            edge_2 = pair[1]
+            edge_1 = working.demanded_edges[min_pair[0]]
+            edge_2 = working.demanded_edges[min_pair[1]]
             res = swap_services_operator(working, edge_1, edge_2)
             current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
             if not improved:
@@ -998,8 +1006,8 @@ def run(solution):
         iteration_start_time = time.time()
 
         # phase 1 - add or remove services of edges with too litle or too many services
-        # best_score, current_best_solution, phase_improving = phase_1(current_best_solution, best_score)
-        best_score, current_best_solution, phase_improving = improved_phase_1(current_best_solution, best_score)
+        # current_best_solution, best_score, phase_improving = phase_1(current_best_solution)
+        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution)
 
         # print("Skipped phase 1!")
 
@@ -1017,8 +1025,8 @@ def run(solution):
 
 
         # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
-        best_score, current_best_solution, phase_improving = phase_2(current_best_solution, best_score)
-        # best_score, current_best_solution, phase_improving = improved_phase_2(current_best_solution, best_score)
+        current_best_solution, best_score, phase_improving = phase_2(current_best_solution)
+        # current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
 
         p2_end_time = time.time()
         if iteration_count == 1:
@@ -1029,7 +1037,8 @@ def run(solution):
             improving = True
 
         # phase 3 - improve the routes
-        best_score, current_best_solution, phase_improving = phase_3(current_best_solution, best_score)
+        current_best_solution, best_score, phase_improving = phase_3(current_best_solution)
+        # current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution)
 
         if phase_improving:
             improving = True
