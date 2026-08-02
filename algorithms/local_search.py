@@ -184,7 +184,7 @@ def undo_swap_services_operator(solution, edge_1, edge_2, edge_1_routes, edge_2_
 
 
 # ? Take 2 routes, cut the routes in 2 (or don't), and merge a cut of a route with the cut of the other route
-def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint):
+def two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, solution=None, day = None):
     #   - only if the two routes are in the same day
     #   - and they are different routes
 
@@ -194,8 +194,13 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
     if route_1.day != route_2.day:
         return None
 
-    day = solution.days[route_1.day]
-    
+    if solution is not None:
+        day = solution.days[route_1.day]
+    elif day is None:
+        print("Calling two_opt op with solution and day both None")
+        return None
+    # else day is not None and work with it
+
     # working only with the routes
     # not removing and adding services to the day, since it's the same day
 
@@ -267,9 +272,14 @@ def two_opt_routes_operator(solution, route_1, route_2, r1_cutpoint, r2_cutpoint
     return cnt
 
 
-def undo_two_opt_routes_operator(solution, route_1, route_2, route_cnt):
+def undo_two_opt_routes_operator(route_1, route_2, route_cnt, solution=None, day = None):
 
-    day = solution.days[route_1.day]
+    if solution is not None:
+        day = solution.days[route_1.day]
+    elif day is None:
+        print("Calling undo_two_opt_routes_operator with solution and day both None")
+        return None
+
     for _ in range(route_cnt):
         day.remove_route(route_id = -1)
 
@@ -288,7 +298,7 @@ def undo_two_opt_routes_operator(solution, route_1, route_2, route_cnt):
 
 
 # ? Move a single service from one route to a different route in the same day
-def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2):
+def route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, solution = None, day = None):
     #   - only if the routes are in the same day
     #   - and they are different routes
 
@@ -304,6 +314,11 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
     if edge_1_id >= len(route_1.targets):
         return None
 
+    if solution is not None:
+        day = solution.days[route_1.day]
+    elif day is None:
+        print("Calling route_move_service_operator with solution and day both None")
+        return None
 
     edge_1 = route_1.targets[edge_1_id]
     route_1.remove_edge(pos = edge_1_id)
@@ -311,7 +326,6 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
 
     edge_1.routes[route_2.day] = route_2
 
-    day = solution.days[route_1.day]
 
     if len(route_1.targets) == 0:
         day.remove_route(route_1)
@@ -331,9 +345,9 @@ def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2
 
     return True
 
-def undo_route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2):
+def undo_route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, solution = None, day = None):
     # call same operator with arguments reversed
-    route_move_service_operator(solution, edge_2_id, edge_1_id, route_2, route_1)
+    route_move_service_operator(edge_2_id, edge_1_id, route_2, route_1, solution, day)
 
     # assert route_1 in solution.days[route_1.day].routes
     # assert route_2 in solution.days[route_1.day].routes
@@ -341,7 +355,7 @@ def undo_route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, ro
 
 
 # ? Take a pair (2 edges served one after another in the same route) and move it to a different route in the same day
-def route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b):
+def route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, solution = None, day = None):
     #   - routes are in the same day
     #   - and they are different routes
 
@@ -354,17 +368,17 @@ def route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, route_a, 
 
     
     # if some check fails, then op can't be done
-    if route_move_service_operator(solution, edge_a12_id + 1, edge_b_id, route_a, route_b) is None:
+    if route_move_service_operator(edge_a12_id + 1, edge_b_id, route_a, route_b, solution, day) is None:
         return None
 
     # otherwise all checks are done in above op call
-    route_move_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b)
+    route_move_service_operator(edge_a12_id, edge_b_id, route_a, route_b, solution, day)
     
     return True
 
-def undo_route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b):
+def undo_route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, solution = None, day = None):
     # same op call with arguments in different order
-    route_move_pair_service_operator(solution, edge_b_id, edge_a12_id, route_b, route_a)
+    route_move_pair_service_operator(edge_b_id, edge_a12_id, route_b, route_a, solution, day)
 
 
 
@@ -580,20 +594,20 @@ def phase_3(working):
                         for r2_pos in range(len(route2.targets)):
 
                             if can_do_two_opt:
-                                res = two_opt_routes_operator(working, route1, route2, r1_pos, r2_pos)
+                                res = two_opt_routes_operator(route1, route2, r1_pos, r2_pos, solution = working)
                                 if res is not None:
                                     cnt = res
                                     current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_two_opt_routes_operator(working, route1, route2, cnt)
+                                    undo_two_opt_routes_operator(route1, route2, cnt, solution = working)
 
-                            if route_move_service_operator(working, r1_pos, r2_pos, route1, route2):
+                            if route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
                                 current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                undo_route_move_service_operator(working, r1_pos, r2_pos, route1, route2)
+                                undo_route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
 
                             if can_do_pair_move:
-                                if route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2):
+                                if route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
                                     current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2)
+                                    undo_route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
             
             working = current_best_solution
             # apply best found for the day
@@ -674,20 +688,20 @@ def phase_3_reverse_loops(working):
                         for r2_pos in range(len(route2.targets)):
 
                             if can_do_two_opt:
-                                res = two_opt_routes_operator(working, route1, route2, r1_pos, r2_pos)
+                                res = two_opt_routes_operator(route1, route2, r1_pos, r2_pos, solution = working)
                                 if res is not None:
                                     cnt = res
                                     current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_two_opt_routes_operator(working, route1, route2, cnt)
+                                    undo_two_opt_routes_operator(route1, route2, cnt, solution = working)
 
-                            if route_move_service_operator(working, r1_pos, r2_pos, route1, route2):
+                            if route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
                                 current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                undo_route_move_service_operator(working, r1_pos, r2_pos, route1, route2)
+                                undo_route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
 
                             if can_do_pair_move:
-                                if route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2):
+                                if route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
                                     current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_route_move_pair_service_operator(working, r1_pos, r2_pos, route1, route2)
+                                    undo_route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
 
             print(f"Ended iteration for day {day}, current time: {datetime.datetime.now()}")
 
