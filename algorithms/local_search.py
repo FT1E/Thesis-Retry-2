@@ -797,8 +797,8 @@ def phase_2(working, N=5, best_full_eval=True):
     iteration_count = 0
     iteration_avg_time = 0
 
+    last_report = time.time() - 600
 
-    # todo - iterations, apply ops as long as there is some improvement
     improved = True
     while improved:
         improved = False
@@ -851,7 +851,8 @@ def phase_2(working, N=5, best_full_eval=True):
         last_iteration_time = iter_end - iter_start
         iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
 
-        if iteration_count % 10 == 1:
+        if iter_end - last_report > 600:
+            last_report = iter_end
             print(f"Phase 2 mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")

@@ -72,7 +72,7 @@ solution = Solution(day_assignments, adjacency_lists_distance, vehicle, GRAPH_ID
 print(f"Cost of initial solution: {solution.evaluate()}")
 
 
-N = 50      # how many top candidates to consider based on estimation
+N = 5      # how many top candidates to consider based on estimation
 
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
