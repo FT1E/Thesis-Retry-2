@@ -585,6 +585,117 @@ def full_evaluate_operator(before_score, solution, best_op_tuple):
     
     return True, after_score
 
+# ? returns an index of where a number should be inserted
+# ?  used in below method evaluate_operator_topN
+# ? assuming list is sorted in ascending order
+
+def binary_insertion(lst, num):
+    if len(lst) == 0:
+        return 0
+    
+    begin = 0
+    end = len(lst) - 1
+    mid = len(lst) // 2
+    while begin < end:
+        if num < lst[mid]:
+            end = mid
+        else:
+            begin = mid + 1
+        mid = (begin + end) // 2
+
+    if mid == len(lst) - 1:
+        # mid+1 so that I know that it's 
+        # either equal to the last one or bigger than last one 
+        # otherwise a bigger value always pushes out a smaller value at the end
+        return mid + 1
+    return mid
+
+
+# save the top N best op tuples
+def evaluate_operator_topN(best_estimates, best_ops, op, undo_op, *args, N=5, **kwargs):
+    # evaluatethe newly provided op and see if it is part of top5 according to estimate
+    
+    # best_estimates and best_ops are arrays of length 0 to N
+    # for first N candidates in iteration it grows from 0 to N, then it only keeps top N found until then
+
+    res = op(*args, **kwargs)
+    if res is None:
+        return None
+    
+    undo_info, new_estimate = res
+
+    undo_op(*args, undo_info=undo_info, **kwargs)
+
+    # ? use binary search to check if and where this op should be inserted
+    # ? when N is a small number like 5, doing a linear search doesn't hurt time complexity
+    # ? but left it as an argument to test stuff
+    pos = binary_insertion(best_estimates, new_estimate)
+    if pos < N:
+        best_estimates.insert(pos, new_estimate)
+        op_tuple = (op, undo_op, args, kwargs)
+        best_ops.insert(pos, op_tuple)
+
+        if len(best_estimates) > N:
+            best_estimates.pop()
+            best_ops.pop()
+
+def full_evaluate_topN_best_estimate(best_ops, solution):
+    # evaluate the best_ops in order of best_estimates and apply the first one which actually improves
+    # return False if no op_tuple actually improves solution score
+    # else true and apply the first one which improves
+    # op_tuples are sorted by best estimation
+    # second part of return result is score of new (or old if not improving) solution
+    
+    before_score = solution.evaluate()
+
+    for op in best_ops:
+        op, undo_op, args, kwargs = op_tuple
+        undo_info, _ = op(*args, **kwargs)
+        score = solution.evaluate()
+        
+        if score < before_score:
+            return True, score
+        
+        # else undo_op
+        undo_op(*args, undo_info = undo_info, **kwargs)
+
+    return False, before_score
+
+def full_evaluate_topN_best_full_eval(best_ops, solution):
+    # evaluate all the best_ops and apply the best one
+    # return result is False if no op_tuple actually improves solution score
+    # else it's true and best op is applied
+    # second part of return result is score of new (or old if not improving) solution
+
+    # baseline is the solution score before applying any op
+    min_score = solution.evaluate()
+    min_op = None
+
+    min_i = -1      # todo - remove this, just wanna see how often it happens that best estimate is not best full eval
+
+    for i, op_tuple in enumerate(best_ops):
+        op, undo_op, args, kwargs = op_tuple
+        undo_info, _ = op(*args, **kwargs)
+        score = solution.evaluate()
+        
+        if score < min_score:
+            min_score = score
+            min_op = op_tuple
+            min_i = i
+
+        undo_op(*args, undo_info = undo_info, **kwargs)
+
+    # apply best op if any actually improves the score
+    if min_op is not None:
+        op, _, args, kwargs = op_tuple
+        op(*args, **kwargs)
+        
+        if min_i > 0:
+            print(f"Best op tuple was found in position {min_i} while considering top {len(best_ops)} op tuples!")
+
+        return True, min_score
+
+    return False, min_score
 
 # below function for just applying the best operator
 def apply_operator(operator, *args, **kwargs):
@@ -600,7 +711,12 @@ def apply_operator(operator, *args, **kwargs):
 
 
 # ? PHASE 1 - add_service_operator and remove_service_operator
-def phase_1(working):
+def phase_1(working, N=5, best_full_eval=True):
+    # ? N = how many best op tuples based on estimation to consider
+    # ? best_full_eval = whether to find
+    # ?    - False - the first improving op tuple among the top N sorted by best estimate
+    # ?    - True  - or to apply best one based on best full eval
+     
     original_score = working.evaluate()
 
     best_score = original_score
@@ -620,29 +736,40 @@ def phase_1(working):
         iter_start = time.time()
 
         # reset values at start of iteration
-        best_estimate = 0
-        best_op_tuple = None
+        # best_estimate = 0
+        # best_op_tuple = None
 
+        # ? saving best N tuples based on estimation
+        best_estimates = []
+        best_op_tuples = []
+
+        
 
         # adding a service to edges with too little services
         under_satisfied_edges = working.get_under_satisfied_edges()
         for edge in under_satisfied_edges:
             no_service_days = work_days.difference(edge.service_days)
             for day in no_service_days:
-                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, add_service_operator, undo_add_service_operator, working, day, edge)
-                
+                # best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, add_service_operator, undo_add_service_operator, working, day, edge)
+                evaluate_operator_topN(best_estimates, best_op_tuples, add_service_operator, undo_add_service_operator, working, day, edge, N = N)
             
 
         # removing a service of edges with too many services
         over_satisfied_edges = working.get_over_satisfied_edges()
         for edge in over_satisfied_edges:
             for day in edge.service_days:
-                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, remove_service_operator, undo_remove_service_operator, working, day, edge)
+                # best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, remove_service_operator, undo_remove_service_operator, working, day, edge)
+                evaluate_operator_topN(best_estimates, best_op_tuples, remove_service_operator, undo_remove_service_operator, working, day, edge, N = N)
                 
 
         # ? note solution is part of args
-        if best_op_tuple is not None:
-            improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
+        # if best_op_tuple is not None:
+        #     improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
+
+        if best_full_eval:
+            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+        else:
+            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
 
         iter_end = time.time()
@@ -1195,8 +1322,8 @@ def run(solution):
         iteration_start_time = time.time()
 
         # phase 1 - add or remove services of edges with too litle or too many services
-        current_best_solution, best_score, phase_improving = phase_1(current_best_solution)
-        # current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution)
+        # current_best_solution, best_score, phase_improving = phase_1(current_best_solution)
+        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution)
 
         # print("Skipped phase 1!")
 
@@ -1211,8 +1338,8 @@ def run(solution):
 
 
         # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
-        current_best_solution, best_score, phase_improving = phase_2(current_best_solution)
-        # current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
+        # current_best_solution, best_score, phase_improving = phase_2(current_best_solution)
+        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
 
         p2_end_time = time.time()
 
