@@ -187,7 +187,7 @@ class Edge:
         # spacing between last service and first service
         # to try to make the solution repeatable
         if len(self.service_days) > 0:
-            first_service = self.service_days[1]
+            first_service = self.service_days[0]
             last_service = self.service_days[-1]
             spacing = (vehicle['planning_duration'] - last_service) + first_service
             if not self.spacing_check(spacing):
@@ -197,7 +197,7 @@ class Edge:
 
     # for estimating cost of new solution after operators, instead of doing full solution evaluate
     def spacing_cost(self):
-        return self.get_irregular_spacing_count() * cost
+        return self.get_irregular_spacing_count() * EXPECTED_SPACING_PENALTY
         
     # for add_service op estimation
     def evaluate_service_spacing(self, i, vehicle):

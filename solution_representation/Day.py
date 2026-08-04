@@ -183,7 +183,7 @@ class Day:
 
         edge.add_service_day(self.number)
         
-
+        return True
 
     # remove an edge from the day, i.e. remove the service of an edge in a day
     def remove_edge(self, edge):

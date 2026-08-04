@@ -704,7 +704,7 @@ def phase_2(working):
                 for d2 in no_service_days:
                     best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, move_service_operator, undo_move_service_operator, working, d1, d2, edge)
                     
-                    
+
 
 
         # swap_services operator
@@ -1100,10 +1100,11 @@ def improved_phase_2(working):
                     best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, move_service_operator, undo_move_service_operator, working, d1, d2, edge)
                     if best_estimate < prev_best_estimate:
                         affected_edges = (edge,)
+                        prev_best_estimate = best_estimate
 
         # todo - compare with min ss estimates
         
-        ss_min_estimate_val = best_estimate
+        ss_min_estimate_val = 1     # starting value
         for pair, estimate in ss_estimations.items():
             if estimate < ss_min_estimate_val:
                 ss_min_estimate_val = estimate
