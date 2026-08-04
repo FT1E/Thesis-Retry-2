@@ -685,7 +685,7 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
 
     # apply best op if any actually improves the score
     if min_op is not None:
-        op, _, args, kwargs = op_tuple
+        op, _, args, kwargs = min_op_tuple
         op(*args, **kwargs)
         
 
@@ -1234,7 +1234,7 @@ def run(solution, topN = 5, best_full_eval = True):
 
         # phase 1 - add or remove services of edges with too litle or too many services
         # current_best_solution, best_score, phase_improving = phase_1(current_best_solution, N=N, best_full_eval = best_full_eval)
-        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution, N=N, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
         # print("Skipped phase 1!")
 
@@ -1249,8 +1249,8 @@ def run(solution, topN = 5, best_full_eval = True):
 
 
         # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
-        # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=N, best_full_eval = best_full_eval)
-        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
+        current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
+        # current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
 
         p2_end_time = time.time()
 
@@ -1258,7 +1258,7 @@ def run(solution, topN = 5, best_full_eval = True):
             improving = True
 
         # phase 3 - improve the routes
-        current_best_solution, best_score, phase_improving = phase_3(current_best_solution, N=N, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = phase_3(current_best_solution, N=topN, best_full_eval = best_full_eval)
         # current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution)
 
         if phase_improving:
