@@ -224,7 +224,7 @@ class Edge:
     
     # for remove_service op estimation
     # a and b will usually be of form (i, i+1) or (i-1, i)
-    def evaluate_spacing(self, a, b):
+    def evaluate_spacing(self, a, b, vehicle):
         # evaluate the spacing between services a and b
         if len(self.service_days) == 0:
             return EXPECTED_SPACING_PENALTY
@@ -232,7 +232,10 @@ class Edge:
         # below is a precaution
         a = a % len(self.service_days)
         b = b % len(self.service_days)
-        spacing = abs(self.service_days[b] - self.service_days[a])
+        if b < a:
+            spacing = (vehicle['planning_duration'] - self.service_days[b]) + self.service_days[a]
+        else:
+            spacing = self.service_days[b] - self.service_days[a]
         return (not self.spacing_check(spacing)) * EXPECTED_SPACING_PENALTY
 
     # END COST EVALUATION

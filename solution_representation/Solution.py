@@ -115,7 +115,7 @@ class Solution:
                 irregular_services_count += edge.over_satisfaction_size(self.vehicle)
 
 
-            irregular_spacing_count += edge.get_irregular_spacing_count()
+            irregular_spacing_count += edge.get_irregular_spacing_count(self.vehicle)
 
         cost = routing_cost + VEHICLE_WEIGHT * vehicle_count + VEHICLE_OVERLOAD_PENALTY * overload_route_count + int(EXPECTED_SERVICES_PENALTY * irregular_services_count) + EXPECTED_SPACING_PENALTY * irregular_spacing_count
         return cost
@@ -133,7 +133,9 @@ class Solution:
                 unsatisfied_edges.append(edge)
                 continue
             
-            if edge.get_irregular_spacing_count():
+            if edge.is_under_satisfied(self.vehicle) or edge.is_over_satisfied(self.vehicle):
+                unsatisfied_edges.append(edge)
+            elif edge.get_irregular_spacing_count(self.vehicle):
                 unsatisfied_edges.append(edge)
     
         if print_info:

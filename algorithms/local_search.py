@@ -60,12 +60,12 @@ def add_service_operator(solution, d1, edge):
         service_id = edge.service_days.index(d1)    # get position of day in service days
 
         # add the spacing penalty for services before which had no service in-between
-        cost_before += edge.evaluate_spacing(service_id-1, service_id + 1)
+        cost_before += edge.evaluate_spacing(service_id-1, service_id + 1, solution.vehicle)
 
         # check the spacings which have one end at the newly added service
         # least acceptable case is one wide spacing turned into 1 valid spacing and 1 invalid (tight/wide)
         # more penalty if 1 invalid spacing turned into 2 invalid spacings 
-        cost_after += edge.evaluate_service_spacing(service_id)
+        cost_after += edge.evaluate_service_spacing(service_id, solution.vehicle)
 
     estimate = cost_after - cost_before
 
@@ -115,14 +115,14 @@ def remove_service_operator(solution, d1, edge):
     service_id = edge.service_days.index(d1)    # get position of day in service days
     
     cost_before = edge.over_satisfaction_size(solution.vehicle) * EXPECTED_SERVICES_PENALTY
-    cost_before += edge.evaluate_service_spacing(service_id)
+    cost_before += edge.evaluate_service_spacing(service_id, solution.vehicle)
     
     assert solution.days[d1].remove_edge(edge)
 
 
     cost_after = edge.over_satisfaction_size(solution.vehicle) * EXPECTED_SERVICES_PENALTY
     # service_id + 1 was shifted to position service_id, unless this was last edge but I think that's a fine metric too
-    cost_after += edge.evaluate_spacing(service_id-1, service_id)
+    cost_after += edge.evaluate_spacing(service_id-1, service_id, solution.vehicle)
     
     # TODO - i don't think it will happen, but be mindful of scenario where len(edge.service_days) == 1
 
@@ -171,7 +171,7 @@ def move_service_operator(solution, d1, d2, edge):
     # check spacing which includes d2 
     # - since d2 is not a service day there is 1 service before d2 and after d2, unless d2 is in last or first gap, but can deal with that by circling the service days
     removed_service_id = edge.service_days.index(d1)
-    cost_before = edge.evaluate_service_spacing(removed_service_id)
+    cost_before = edge.evaluate_service_spacing(removed_service_id, solution.vehicle)
 
     
     route, pos, estimate_rs = remove_service_operator(solution, d1, edge)
@@ -181,15 +181,15 @@ def move_service_operator(solution, d1, d2, edge):
     new_service_id = edge.service_days.index(d2)
     if new_service_id == removed_service_id:
         # if d2 is put in same position compare spacings
-        cost_after = edge.evaluate_service_spacing(new_service_id)
+        cost_after = edge.evaluate_service_spacing(new_service_id, solution.vehicle)
     else:
         # else check the widened gap left by removing d1
-        cost_after = edge.evaluate_spacing(removed_service_id - 1, removed_service_id)
+        cost_after = edge.evaluate_spacing(removed_service_id - 1, removed_service_id, solution.vehicle)
         
         # also check the tightened gaps made by inserting d2
-        cost_after += edge.evaluate_service_spacing(new_service_id)
+        cost_after += edge.evaluate_service_spacing(new_service_id, solution.vehicle)
         # also for before check the gap that was including d2
-        cost_before += edge.evaluate_spacing(new_service_id - 1, new_service_id + 1)
+        cost_before += edge.evaluate_spacing(new_service_id - 1, new_service_id + 1, solution.vehicle)
 
     estimate = cost_after - cost_before
 
@@ -945,12 +945,10 @@ def phase_3_reverse_loops(working):
 # PHASE METHODS - IMPROVED VERSIONS
 
 # ? IMPROVED PHASE 1 - add_service_operator and remove_service_operator
-# todo - apply best operation per edge, not for whole solution at each iteration
+# ? - apply best operation per edge, not for whole solution at each iteration
 def improved_phase_1(working):
     original_score = working.evaluate()
-    working_score = original_score
 
-    current_best_solution = working
     best_score = original_score
 
     work_days = set(working.get_work_days())
@@ -960,77 +958,50 @@ def improved_phase_1(working):
 
     improved = True
 
-    # best add service op day for each edge (which is under-satisfied)
-    # [0] - best day
-    # [1] - score if op applied with best day
-    best_as_op = None
-
-    # best remove service op day for each edge (which is over-satisfied)
-    best_rs_op = None
-
-
+    improved_edge = False
     while improved:
         improved = False
         
         iteration_count += 1
         iter_start = time.time()
 
-        # reset values at start of iteration
-        best_as_op = dict()
-        best_rs_op = dict()
 
         # adding a service to edges with too little services
         under_satisfied_edges = working.get_under_satisfied_edges()
         for edge in under_satisfied_edges:
+        
+            best_op_tuple = None
+            best_estimate = 0
+
             no_service_days = work_days.difference(edge.service_days)
             for day in no_service_days:
-                if add_service_operator(working, day, edge):
-                    neighbour_score = working.evaluate()
-                    if edge.sid not in best_as_op:
-                        best_as_op[edge.sid] = [day, neighbour_score]
-                    elif neighbour_score < best_as_op[edge.sid][1]:
-                        best_as_op[edge.sid][0] = day
-                        best_as_op[edge.sid][1] = neighbour_score
-                    
-                    undo_add_service_operator(working, day, edge)
+                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, add_service_operator, undo_add_service_operator, working, day, edge)
+                
             
+            # full - evaluate the best one for each edge
+            if best_op_tuple is not None:
+                improved_edge, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
+
+                if improved_edge:
+                    improved = True
 
         # removing a service of edges with too many services
         over_satisfied_edges = working.get_over_satisfied_edges()
         for edge in over_satisfied_edges:
+            
+            best_op_tuple = None
+            best_estimate = 0
+
             for day in edge.service_days:
-                res = remove_service_operator(working, day, edge)
-                if res is not None:
-                    route, pos, estimate = res
-                    neighbour_score = working.evaluate()
-                    if edge.sid not in best_rs_op:
-                        best_rs_op[edge.sid] = [day, neighbour_score]
-                    elif neighbour_score < best_rs_op[edge.sid][1]:
-                        best_rs_op[edge.sid][0] = day
-                        best_rs_op[edge.sid][1] = neighbour_score
+                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, remove_service_operator, undo_remove_service_operator, working, day, edge)
 
+            # full - evaluate the best one for each edge
+            if best_op_tuple is not None:
+                improved_edge, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
 
-                    undo_remove_service_operator(working, day, edge, route, pos)
+                if improved_edge:
+                    improved = True
 
-        # apply best ops for each edge
-        # if they are empty then improved won't be set to true and loop will end
-
-        for sid, res in best_as_op.items():
-            edge = working.demanded_edges[sid]
-            day = res[0]
-            add_service_operator(working, day, edge)
-            improved = True
-
-        
-        for sid, res in best_rs_op.items():
-            edge = working.demanded_edges[sid]
-            day = res[0]
-            remove_service_operator(working, day, edge)
-            improved = True
-
-        # ? should be fine to do it without deepcopy, but doing it just in case
-        current_best_solution = copy.deepcopy(working)
-        best_score = working.evaluate()
 
         iter_end = time.time()
 
@@ -1051,7 +1022,7 @@ def improved_phase_1(working):
     print(f"Average iteration time: {iteration_avg_time}")
     print(f"Current score: {best_score}")
     
-    return current_best_solution, best_score, best_score < original_score
+    return working, best_score, best_score < original_score
 
 # ? PHASE 2 - move_service_operator and swap_services_operator
 # todo - maybe try saving estimates of move_service - will require A LOT MORE SPACE
