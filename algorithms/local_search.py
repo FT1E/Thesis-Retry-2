@@ -736,9 +736,6 @@ def phase_1(working, N=5, best_full_eval=True):
         iter_start = time.time()
 
         # reset values at start of iteration
-        # best_estimate = 0
-        # best_op_tuple = None
-
         # ? saving best N tuples based on estimation
         best_estimates = []
         best_op_tuples = []
@@ -750,7 +747,6 @@ def phase_1(working, N=5, best_full_eval=True):
         for edge in under_satisfied_edges:
             no_service_days = work_days.difference(edge.service_days)
             for day in no_service_days:
-                # best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, add_service_operator, undo_add_service_operator, working, day, edge)
                 evaluate_operator_topN(best_estimates, best_op_tuples, add_service_operator, undo_add_service_operator, working, day, edge, N = N)
             
 
@@ -758,14 +754,10 @@ def phase_1(working, N=5, best_full_eval=True):
         over_satisfied_edges = working.get_over_satisfied_edges()
         for edge in over_satisfied_edges:
             for day in edge.service_days:
-                # best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, remove_service_operator, undo_remove_service_operator, working, day, edge)
                 evaluate_operator_topN(best_estimates, best_op_tuples, remove_service_operator, undo_remove_service_operator, working, day, edge, N = N)
                 
 
         # ? note solution is part of args
-        # if best_op_tuple is not None:
-        #     improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
-
         if best_full_eval:
             improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
@@ -797,7 +789,7 @@ def phase_1(working, N=5, best_full_eval=True):
 
 
 # ? PHASE 2 - move_service_operator and swap_services_operator
-def phase_2(working):
+def phase_2(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
     best_score = original_score
 
@@ -820,8 +812,9 @@ def phase_2(working):
         iter_start = time.time()
 
         # reset values
-        best_op_tuple = None
-        best_estimate = 0
+        # ? saving best N tuples based on estimation
+        best_op_tuples = []
+        best_estimates = []
 
         # move_service operator
         for edge in working.demanded_edges:
@@ -829,8 +822,7 @@ def phase_2(working):
 
             for d1 in edge.service_days:
                 for d2 in no_service_days:
-                    best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, move_service_operator, undo_move_service_operator, working, d1, d2, edge)
-                    
+                    evaluate_operator_topN(best_estimates, best_op_tuples, move_service_operator, undo_move_service_operator, working, d1, d2, edge, N=N)
 
 
 
@@ -842,15 +834,17 @@ def phase_2(working):
 
                 for j in range(i+1, len(bucket)):
                     edge_2 = bucket[j]
-                    best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2)
+                    evaluate_operator_topN(best_estimates, best_op_tuples, swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2, N=N)
 
                     
-            
 
-        # apply the best operator after trying all
-        if best_op_tuple is not None:
-            improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
-            
+        # ? note solution is part of args
+        if best_full_eval:
+            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+        else:
+            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+
+
             
         
         # else improved should be false and loop will exit
@@ -881,7 +875,7 @@ def phase_2(working):
 
 
 # ? PHASE 3 - route operators, two_opt, move (single) and move_pair, best move applied for each day
-def phase_3(working):
+def phase_3(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
 
     best_score = original_score
@@ -909,8 +903,9 @@ def phase_3(working):
             iter_start = time.time()
 
             # reset values
-            best_op_tuple = None
-            best_estimate = 0
+            # ? saving best N tuples based on estimation
+            best_op_tuples = []
+            best_estimates = []
 
 
             routes = working.days[day].routes.copy()
@@ -930,18 +925,20 @@ def phase_3(working):
                         for r2_pos in range(len(route2.targets)):
 
                             if can_do_two_opt:
-                                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, two_opt_routes_operator, undo_two_opt_routes_operator, route1, route2, r1_pos, r2_pos, solution = working)
-                                
-                            best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_service_operator, undo_route_move_service_operator, r1_pos, r2_pos, route1, route2, solution = working)
-
+                                evaluate_operator_topN(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, route1, route2, r1_pos, r2_pos, N=N, solution = working)
+                            
+                            evaluate_operator_topN(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, r1_pos, r2_pos, route1, route2, N=N, solution = working)
 
                             if can_do_pair_move:
-                                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_pair_service_operator, undo_route_move_pair_service_operator, r1_pos, r2_pos, route1, route2, solution = working)
+                                evaluate_operator_topN(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, r1_pos, r2_pos, route1, route2, N=N, solution = working)
             
-            # ? apply best found for the day
-            if best_op_tuple is not None:
-                improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
-                
+            
+            # ? note solution is part of args
+            if best_full_eval:
+                improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            else:
+                improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+   
 
             iter_end = time.time()
 
@@ -975,92 +972,6 @@ def phase_3(working):
 
 
 
-# ? PHASE 3 - route operators, two_opt, move (single) and move_pair, best move applied for each day
-def phase_3_reverse_loops(working):
-    original_score = working.evaluate()
-    working_score = original_score
-
-    current_best_solution = working
-    best_score = original_score
-
-    
-    iteration_count = 0
-    iteration_avg_time = 0
-
-    # todo - iterations, apply ops as long as there is some improvement
-    
-    work_days = working.get_work_days()
-
-    # todo - one test run with the other way around for bug testing
-    improved = True
-    while improved:
-        improved = False
-    
-        iteration_count += 1
-        iter_start = time.time()
-
-
-        for day in work_days:
-
-            routes = working.days[day].routes.copy()
-
-            for i_count, route1 in enumerate(routes):
-                for r1_pos in range(len(route1.targets)):
-
-                    can_do_pair_move = r1_pos + 1 < len(route1.targets)
-
-                    for j_count, route2 in enumerate(routes):
-                        if i_count == j_count:
-                            continue
-                        
-                        can_do_two_opt = i_count < j_count  # to perform this op on every unordered pair of routes
-                        # other ops perform work on every ordered pair of routes
-
-                        for r2_pos in range(len(route2.targets)):
-
-                            if can_do_two_opt:
-                                res = two_opt_routes_operator(route1, route2, r1_pos, r2_pos, solution = working)
-                                if res is not None:
-                                    cnt = res
-                                    current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_two_opt_routes_operator(route1, route2, cnt, solution = working)
-
-                            if route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
-                                current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                undo_route_move_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
-
-                            if can_do_pair_move:
-                                if route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working):
-                                    current_best_solution, best_score, improved = evaluate_neighbour(working, current_best_solution, best_score)
-                                    undo_route_move_pair_service_operator(r1_pos, r2_pos, route1, route2, solution = working)
-
-            print(f"Ended iteration for day {day}, current time: {datetime.datetime.now()}")
-
-            working = current_best_solution
-            working_score = best_score
-
-
-        iter_end = time.time()
-
-        last_iteration_time = iter_end - iter_start
-        iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
-
-        if iteration_count % 10 == 1:
-            print(f"Phase 3 mid-report:")
-            print(f"Iteration count: {iteration_count}")
-            print(f"Last iteration time: {last_iteration_time}")
-            print(f"Average iteration time: {iteration_avg_time}")
-            print(f"Current score: {best_score}")
-            
-    print("Phase 3 ended!")
-    print("Phase 3 Report:")
-    print(f"Iteration count: {iteration_count}")
-    print(f"Last iteration time: {last_iteration_time}")
-    print(f"Average iteration time: {iteration_avg_time}")
-    print(f"Current score: {best_score}")
-
-
-    return current_best_solution, best_score, best_score < original_score
 
 
 
@@ -1072,7 +983,7 @@ def phase_3_reverse_loops(working):
 
 # ? IMPROVED PHASE 1 - add_service_operator and remove_service_operator
 # ? - apply best operation per edge, not for whole solution at each iteration
-def improved_phase_1(working):
+def improved_phase_1(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
 
     best_score = original_score
@@ -1096,37 +1007,39 @@ def improved_phase_1(working):
         under_satisfied_edges = working.get_under_satisfied_edges()
         for edge in under_satisfied_edges:
         
-            best_op_tuple = None
-            best_estimate = 0
+            best_op_tuples = []
+            best_estimates = []
 
             no_service_days = work_days.difference(edge.service_days)
             for day in no_service_days:
-                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, add_service_operator, undo_add_service_operator, working, day, edge)
+                evaluate_operator_topN(best_estimates, best_op_tuples, add_service_operator, undo_add_service_operator, working, day, edge, N=N)
                 
-            
-            # full - evaluate the best one for each edge
-            if best_op_tuple is not None:
-                improved_edge, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
+        
+            if best_full_eval:
+                improved_edge, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            else:
+                improved_edge, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
-                if improved_edge:
-                    improved = True
+            if improved_edge:
+                improved = True
 
         # removing a service of edges with too many services
         over_satisfied_edges = working.get_over_satisfied_edges()
         for edge in over_satisfied_edges:
             
-            best_op_tuple = None
-            best_estimate = 0
+            best_op_tuples = []
+            best_estimates = []
 
             for day in edge.service_days:
-                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, remove_service_operator, undo_remove_service_operator, working, day, edge)
+                evaluate_operator_topN(best_estimates, best_op_tuples, remove_service_operator, undo_remove_service_operator, working, day, edge, N=N)
 
-            # full - evaluate the best one for each edge
-            if best_op_tuple is not None:
-                improved_edge, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
+            if best_full_eval:
+                improved_edge, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            else:
+                improved_edge, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
-                if improved_edge:
-                    improved = True
+            if improved_edge:
+                improved = True
 
 
         iter_end = time.time()
