@@ -174,7 +174,7 @@ def move_service_operator(solution, d1, d2, edge):
     cost_before = edge.evaluate_service_spacing(removed_service_id, solution.vehicle)
 
     
-    route, pos, estimate_rs = remove_service_operator(solution, d1, edge)
+    (route, pos), estimate_rs = remove_service_operator(solution, d1, edge)
     estimate_as = add_service_operator(solution, d2, edge)
 
 
@@ -210,10 +210,9 @@ def undo_move_service_operator(solution, d1, d2, edge, undo_info):
     #   ? - intuitively this could be a call to same op with arguments reversed
     #   ? - but to not destroy the solution before, this inserts it back in the same route and same position of day where the edge was removed / moved from
 
-    route, pos = undo_info
 
     undo_add_service_operator(solution, d2, edge)
-    undo_remove_service_operator(solution, d1, edge, route, pos)
+    undo_remove_service_operator(solution, d1, edge, undo_info)
 
 
 # ? swap the service days of 2 edges
@@ -257,7 +256,7 @@ def swap_services_operator(solution, edge_1, edge_2):
     for day in only_edge_1_days:
         cost_before += edge_1.routes[day].evaluate(solution.vehicle)
 
-        route, pos, _ = remove_service_operator(solution, day, edge_1)
+        (route, pos), _ = remove_service_operator(solution, day, edge_1)
         add_service_operator(solution, day, edge_2)
 
         cost_after += edge_2.routes[day].evaluate(solution.vehicle)
@@ -269,7 +268,7 @@ def swap_services_operator(solution, edge_1, edge_2):
     for day in only_edge_2_days:
         cost_before += edge_2.routes[day].evaluate(solution.vehicle)
 
-        route, pos, _ = remove_service_operator(solution, day, edge_2)
+        (route, pos), _ = remove_service_operator(solution, day, edge_2)
         add_service_operator(solution, day, edge_1)
 
         cost_after += edge_1.routes[day].evaluate(solution.vehicle)
@@ -294,11 +293,11 @@ def undo_swap_services_operator(solution, edge_1, edge_2, undo_info):
 
     for route, pos in edge_1_routes:
         undo_add_service_operator(solution, route.day, edge_2)
-        undo_remove_service_operator(solution, route.day, edge_1, route, pos)
+        undo_remove_service_operator(solution, route.day, edge_1, (route, pos))
 
     for route, pos in edge_2_routes:
         undo_add_service_operator(solution, route.day, edge_1)
-        undo_remove_service_operator(solution, route.day, edge_2, route, pos)
+        undo_remove_service_operator(solution, route.day, edge_2, (route, pos))
     
 
 
@@ -723,7 +722,7 @@ def phase_2(working):
 
         # apply the best operator after trying all
         if best_op_tuple is not None:
-            improved, best_score = full_evaluate_operator(best_score, solution, best_op_tuple)
+            improved, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
             
             
         
@@ -1080,7 +1079,7 @@ def improved_phase_2(working):
 
         # ? re-calculate swap_services for affected_edges from last iteration
         for edge_1 in affected_edges:
-            for edge_2 in working.frequency_buckets[edge.freq]:
+            for edge_2 in working.frequency_buckets[edge_1.freq]:
                 if edge_1 == edge_2 or edge_2 in affected_edges:
                     # if both edges are affected then they are part of best op from previous iteration
                     continue
@@ -1115,14 +1114,14 @@ def improved_phase_2(working):
             e1_sid, e2_sid = ss_min_estimate_pair
             edge_1 = working.demanded_edges[e1_sid]
             edge_2 = working.demanded_edges[e2_sid]
-            op_tuple = (swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2)
-            improved_op, best_score = full_evaluate_operator(best_score, solution, op_tuple)
+            op_tuple = (swap_services_operator, undo_swap_services_operator, (working, edge_1, edge_2), {})
+            improved_op, best_score = full_evaluate_operator(best_score, working, op_tuple)
             if improved_op:
                 improved = True
 
         if best_op_tuple is not None:
             # regardless of whether above was improving, it's worth a try if this is improving as well after it
-            improved_op, best_score = full_evaluate_operator(best_score, solution, best_op_tuple)
+            improved_op, best_score = full_evaluate_operator(best_score, working, best_op_tuple)
             if improved_op:
                 improved = True
 
@@ -1154,7 +1153,7 @@ def improved_phase_2(working):
 
 
 
-    return current_best_solution, best_score, best_score < original_score
+    return working, best_score, best_score < original_score
 
   
 

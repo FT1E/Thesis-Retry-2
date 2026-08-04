@@ -205,7 +205,9 @@ class Edge:
         # evaluate the spacings between services (i-1, i) and (i, i+1)
         if len(self.service_days) == 0:
             return 0
-        
+        elif len(self.service_days) == 1:
+            spacing = vehicle['planning_duration'] - self.service_days[-1] + self.service_days[0]
+            return (not self.spacing_check(spacing)) * EXPECTED_SPACING_PENALTY
 
         # below if is to account for spacing between last and first service
         if i == 0 or i == len(self.service_days)-1:

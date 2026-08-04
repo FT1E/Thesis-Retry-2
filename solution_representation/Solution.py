@@ -49,6 +49,11 @@ class Solution:
             # each day then sets its position in it to reference the route for the edge in that day
             edge.init_routes(vehicle)
 
+        for day in self.days:
+            for route in day.routes:
+                for edge in route.targets:
+                    edge.routes[day.number] = route
+
 
         # ? below just for reference for calculating routing cost
         self.vehicle = vehicle
