@@ -1207,7 +1207,9 @@ def improved_phase_3(working):
 
 
 # RUN METHOD
-def run(solution):
+# ? topN = how many top operation candidates to consider, best ordered by estimation
+# ? best_full_eval - whether to pick the best among top N based on full evaluation or best estimation
+def run(solution, topN = 5, best_full_eval = True):
 
      
     no_improvement_count = 0
@@ -1235,8 +1237,8 @@ def run(solution):
         iteration_start_time = time.time()
 
         # phase 1 - add or remove services of edges with too litle or too many services
-        # current_best_solution, best_score, phase_improving = phase_1(current_best_solution)
-        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution)
+        # current_best_solution, best_score, phase_improving = phase_1(current_best_solution, N=N, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution, N=N, best_full_eval = best_full_eval)
 
         # print("Skipped phase 1!")
 
@@ -1251,8 +1253,8 @@ def run(solution):
 
 
         # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
-        # current_best_solution, best_score, phase_improving = phase_2(current_best_solution)
-        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
+        # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=N, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution, N=N, best_full_eval = best_full_eval)
 
         p2_end_time = time.time()
 
@@ -1260,7 +1262,7 @@ def run(solution):
             improving = True
 
         # phase 3 - improve the routes
-        current_best_solution, best_score, phase_improving = phase_3(current_best_solution)
+        current_best_solution, best_score, phase_improving = phase_3(current_best_solution, N=N, best_full_eval = best_full_eval)
         # current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution)
 
         if phase_improving:
