@@ -671,7 +671,6 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
     min_score = solution.evaluate()
     min_op = None
 
-    min_i = -1      # todo - remove this, just wanna see how often it happens that best estimate is not best full eval
 
     for i, op_tuple in enumerate(best_ops):
         op, undo_op, args, kwargs = op_tuple
@@ -681,7 +680,6 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
         if score < min_score:
             min_score = score
             min_op = op_tuple
-            min_i = i
 
         undo_op(*args, undo_info = undo_info, **kwargs)
 
@@ -690,8 +688,6 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
         op, _, args, kwargs = op_tuple
         op(*args, **kwargs)
         
-        if min_i > 0:
-            print(f"Best op tuple was found in position {min_i} while considering top {len(best_ops)} op tuples!")
 
         return True, min_score
 
@@ -1254,7 +1250,7 @@ def run(solution, topN = 5, best_full_eval = True):
 
         # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
         # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=N, best_full_eval = best_full_eval)
-        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution, N=N, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
 
         p2_end_time = time.time()
 
