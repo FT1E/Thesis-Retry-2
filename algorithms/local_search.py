@@ -562,7 +562,7 @@ def evaluate_operator(best_estimate, best_op, op, undo_op, *args, **kwargs):
     res = op(*args, **kwargs)
     if res is None:
         # if op wasn't performed don't evaluate
-        return None, best_estimate, best_op
+        return best_estimate, best_op
 
     undo_info, new_estimate = res
 
@@ -1029,7 +1029,6 @@ def improved_phase_1(working):
 # todo - save estimate costs of op2, and re-calculate when something changes
 def improved_phase_2(working):
     original_score = working.evaluate()
-    working_score = original_score
 
     best_score = original_score
     
@@ -1037,15 +1036,109 @@ def improved_phase_2(working):
     
     iteration_count = 0
     iteration_avg_time = 0
+    last_report = time.time() - 600
+
+    ss_min_estimate_pair = None
+    ss_min_estimate_val = 0
+
+    # estimations for swap_service_operator
+    ss_estimations = dict()
+
+    # todo - calculate initial estimates for swap_services
+    for bucket in working.frequency_buckets.values():
+        
+        for i, edge_1 in enumerate(bucket):
+
+            for j in range(i+1, len(bucket)):
+                edge_2 = bucket[j]
+
+
+                estimate, _ = evaluate_operator(0, None, swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2)
+                if estimate != 0:
+                    # only consider candidates with estimate < 0
+                    # below is because calling swap(e1, e2) is same as swap(e2, e1)
+                    id1 = min(edge_1.sid, edge_2.sid)
+                    id2 = max(edge_1.sid, edge_2.sid)
+                    ss_estimations[(id1, id2)] = estimate
+                    
+
+
+
+    affected_edges = tuple()    # initially empty tuple
 
     improved = True
     while improved:
         improved = False
 
+        prev_best_estimate = 0
 
-        # todo
+        best_estimate = 0
+        best_op_tuple = None
 
-        if iteration_count % 10 == 1:
+        iteration_count += 1
+        iter_start = time.time()
+
+        # ? re-calculate swap_services for affected_edges from last iteration
+        for edge_1 in affected_edges:
+            for edge_2 in working.frequency_buckets[edge.freq]:
+                if edge_1 == edge_2 or edge_2 in affected_edges:
+                    # if both edges are affected then they are part of best op from previous iteration
+                    continue
+                
+                estimate, _ = evaluate_operator(0, None, swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2)
+                # below is because calling swap(e1, e2) is same as swap(e2, e1)
+                id1 = min(edge_1.sid, edge_2.sid)
+                id2 = max(edge_1.sid, edge_2.sid)
+                ss_estimations[(id1, id2)] = estimate
+                        
+
+        # ? - check best estimate for move_service, same as in original phase_2
+        for edge in working.demanded_edges:
+            no_service_days = list(work_days.difference(edge.service_days))
+
+            for d1 in edge.service_days:
+                for d2 in no_service_days:
+                    best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, move_service_operator, undo_move_service_operator, working, d1, d2, edge)
+                    if best_estimate < prev_best_estimate:
+                        affected_edges = (edge,)
+
+        # todo - compare with min ss estimates
+        
+        ss_min_estimate_val = best_estimate
+        for pair, estimate in ss_estimations.items():
+            if estimate < ss_min_estimate_val:
+                ss_min_estimate_val = estimate
+                ss_min_estimate_pair = pair
+
+        # if swap_services has better lowest estimate than move_service estimate
+        if ss_min_estimate_val < best_estimate:
+            e1_sid, e2_sid = ss_min_estimate_pair
+            edge_1 = working.demanded_edges[e1_sid]
+            edge_2 = working.demanded_edges[e2_sid]
+            op_tuple = (swap_services_operator, undo_swap_services_operator, working, edge_1, edge_2)
+            improved_op, best_score = full_evaluate_operator(best_score, solution, op_tuple)
+            if improved_op:
+                improved = True
+
+        if best_op_tuple is not None:
+            # regardless of whether above was improving, it's worth a try if this is improving as well after it
+            improved_op, best_score = full_evaluate_operator(best_score, solution, best_op_tuple)
+            if improved_op:
+                improved = True
+
+
+        best_estimate = 0
+        best_op_tuple = None
+
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
+
+
+        if iter_end - last_report > 600:
+            last_report = iter_end
             print(f"Phase 2 mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
