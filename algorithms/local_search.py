@@ -685,7 +685,7 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
 
     # apply best op if any actually improves the score
     if min_op is not None:
-        op, _, args, kwargs = min_op_tuple
+        op, _, args, kwargs = min_op
         op(*args, **kwargs)
         
 
