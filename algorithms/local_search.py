@@ -672,7 +672,7 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
     min_op = None
 
 
-    for i, op_tuple in enumerate(best_ops):
+    for op_tuple in best_ops:
         op, undo_op, args, kwargs = op_tuple
         undo_info, _ = op(*args, **kwargs)
         score = solution.evaluate()
