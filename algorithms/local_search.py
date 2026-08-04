@@ -648,7 +648,7 @@ def full_evaluate_topN_best_estimate(best_ops, solution):
     
     before_score = solution.evaluate()
 
-    for op in best_ops:
+    for op_tuple in best_ops:
         op, undo_op, args, kwargs = op_tuple
         undo_info, _ = op(*args, **kwargs)
         score = solution.evaluate()

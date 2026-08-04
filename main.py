@@ -77,6 +77,7 @@ N = 50      # how many top candidates to consider based on estimation
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
 
+print(f"Running Local Search with top {N} opearations according to estimation")
 ls_score, ls_improved_solution = run_ls(solution, topN=N)
 
 
