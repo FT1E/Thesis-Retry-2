@@ -2,6 +2,8 @@
 # Program start point in this script
 
 import math
+import time
+from datetime import timedelta
 
 from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data
 from util.min_distances import calculate_distances
@@ -59,11 +61,20 @@ vehicle['count'] = math.ceil(total_demand / (vehicle['capacity'] * len(vehicle['
 # todo - runs with different initial solution
 # todo - greedy dynamic - run with different cluster sizes, at least one run with infinite size
 
+
+start = time.perf_counter()
+
 # day_assignments, capacity_used = gs_run(demanded_edge_list, vehicle)
 
 day_assignments, capacity_used = gdc_run(demanded_edge_list, adjacency_lists_deadline, vehicle, DYNAMIC_CLUSTER_SIZE_LIMIT)
 
 # day_assignments, capacity_used = gsc_run(demanded_edge_list, adjacency_lists_distance, vehicle, GRAPH_ID)
+
+end = time.perf_counter()
+
+greedy_time = end - start
+
+print(f"Greedy algorithm time: {greedy_time:.6f} seconds")
 
 solution = Solution(day_assignments, adjacency_lists_distance, vehicle, GRAPH_ID)
 
@@ -76,9 +87,15 @@ N = 5      # how many top candidates to consider based on estimation
 
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
-
 print(f"Running Local Search with top {N} opearations according to estimation")
+
+start = time.time()
+
 ls_score, ls_improved_solution = run_ls(solution, topN=N)
+
+end = time.time()
+
+ls_time = end - start
 
 
 print("\n----- MARKER - SOLUTION PRINTED BELOW -------\n")
@@ -88,5 +105,8 @@ print(ls_improved_solution)
 print("\n----- MARKER - SOLUTION PRINTED ABOVE -------\n")
 
 
+print("Printing greedy algorithm time to avoid scrolling or ctrl+f")
+print(f"Greedy algorithm time: {timedelta(seconds = greedy_time)} seconds")
+print(f"LS time: {timedelta(seconds = ls_time)}")
 print(f"LS return score: {ls_score}")
 print(f"Final solution score: {ls_improved_solution.evaluate()}")
