@@ -5,7 +5,7 @@ from enum import Enum
 
 sys.path.append('..')
 
-from solution_representation.constants import EXPECTED_SPACING_PENALTY
+from solution_representation.constants import EXPECTED_SPACING_PENALTY, EXPECTED_SERVICES_PENALTY
 
 PriorityType = Enum('PriorityType', {'Frequency' : 0, 'Deadline' : 1, 'Distance' : 2})
 
@@ -174,22 +174,67 @@ class Edge:
         return (lower_bound <= spacing and spacing <= upper_bound)
     
     
-    def get_irregular_spacing_count(self):
+    def get_irregular_spacing_count(self, vehicle):
         count = 0
 
         # not checking spacing between start of planning and first service and last service and end of planning
         # only between two services performed
         for i in range(len(self.service_days) - 1):
-            spacing = self.service_days[i+1] - self.service_days[i]
+            spacing = self.service_days[(i+1)] - self.service_days[i]
+            if not self.spacing_check(spacing):
+                count += 1
+
+        # spacing between last service and first service
+        # to try to make the solution repeatable
+        if len(self.service_days) > 0:
+            first_service = self.service_days[1]
+            last_service = self.service_days[-1]
+            spacing = (vehicle['planning_duration'] - last_service) + first_service
             if not self.spacing_check(spacing):
                 count += 1
 
         return count
 
     # for estimating cost of new solution after operators, instead of doing full solution evaluate
-    def spacing_cost(self, vehicle):
+    def spacing_cost(self):
         return self.get_irregular_spacing_count() * cost
         
+    # for add_service op estimation
+    def evaluate_service_spacing(self, i, vehicle):
+        # evaluate the spacings before and after service i
+        # evaluate the spacings between services (i-1, i) and (i, i+1)
+        if len(self.service_days) == 0:
+            return 0
+        
+
+        # below if is to account for spacing between last and first service
+        if i == 0 or i == len(self.service_days)-1:
+            spacing_1 = vehicle['planning_duration'] - self.service_days[-1] + self.service_days[0]
+            if i == 0:
+                spacing_2 = self.service_days[i+1] - self.service_days[i]
+            else:
+                spacing_2 = self.service_days[i] - self.service_days[i-1]
+        else:
+            spacing_1 = self.service_days[i] - self.service_days[i-1]
+            spacing_2 = self.service_days[i+1] - self.service_days[i]
+
+        penalty = ((not self.spacing_check(spacing_1)) + (not self.spacing_check(spacing_2))) * EXPECTED_SPACING_PENALTY
+
+        return penalty
+    
+    # for remove_service op estimation
+    # a and b will usually be of form (i, i+1) or (i-1, i)
+    def evaluate_spacing(self, a, b):
+        # evaluate the spacing between services a and b
+        if len(self.service_days) == 0:
+            return EXPECTED_SPACING_PENALTY
+
+        # below is a precaution
+        a = a % len(self.service_days)
+        b = b % len(self.service_days)
+        spacing = abs(self.service_days[b] - self.service_days[a])
+        return (not self.spacing_check(spacing)) * EXPECTED_SPACING_PENALTY
+
     # END COST EVALUATION
 
 
@@ -210,9 +255,33 @@ class Edge:
             return True
         return False
 
+    def under_satisfaction_size(self, vehicle):
+        # 0 == not under satisfied (has services >= lower bound)
+        # 1 == completely under satisfied - ie has 0 services
+        service_count = len(self.service_days)
+        expected_service_count = math.floor(vehicle['planning_duration'] / math.ceil(self.freq))
+        
+        if expected_service_count <= service_count:
+            return 0
+        
+        return (expected_service_count - service_count) / expected_service_count
+
+    def over_satisfaction_size(self, vehicle):
+        # 0 == not over satisfied (has services <= upper bound)
+        # 1 == completely over satisfied - ie has max services, every day
+
+        service_count = len(self.service_days)
+        expected_service_count = math.ceil(vehicle['planning_duration'] / math.ceil(self.freq))
+        
+        if expected_service_count >= service_count:
+            return 0
+        
+        return (service_count - expected_service_count) / (vehicle['planning_duration'] - expected_service_count)
+        
     # END LS PHASE 1
 
     # END METHODS USED IN LOCAL SEARCH / SOLUTION 
 
 
+    
     

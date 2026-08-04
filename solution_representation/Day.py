@@ -157,6 +157,8 @@ class Day:
             # if day has no routes
             route = Route([edge])
             self.add_route(route)
+            edge.routes[self.number] = route
+            # for below case .routes[day] is set in insert_edge
         else:
             # add it to a random route
             # other operators will move it to a better route

@@ -137,7 +137,7 @@ class Route:
             overload = self.demand - vehicle['capacity']
             overload_cnt = math.ceil(overload / vehicle['capacity'])
             
-        return overload_cnt
+        return int(overload_cnt)
 
     # cost of the route in the solution
     #  == routing_cost + penalty * (how many times overload)

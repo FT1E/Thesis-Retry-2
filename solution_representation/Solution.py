@@ -108,18 +108,16 @@ class Solution:
         irregular_services_count = 0
 
         for edge in self.demanded_edges:
-            if len(edge.service_days) == 0:
-                # for edges which weren't serviced at all - skip them
-                # that penalty is added separately - expected services count
-                continue
-
             # number of services penalty
-            if edge.is_under_satisfied(self.vehicle) or edge.is_over_satisfied(self.vehicle):
-                irregular_services_count += 1
+            if edge.is_under_satisfied(self.vehicle):
+                irregular_services_count += edge.under_satisfaction_size(self.vehicle)
+            elif edge.is_over_satisfied(self.vehicle):
+                irregular_services_count += edge.over_satisfaction_size(self.vehicle)
+
 
             irregular_spacing_count += edge.get_irregular_spacing_count()
 
-        cost = routing_cost + VEHICLE_WEIGHT * vehicle_count + VEHICLE_OVERLOAD_PENALTY * overload_route_count + EXPECTED_SERVICES_PENALTY * irregular_services_count+ EXPECTED_SPACING_PENALTY * irregular_spacing_count
+        cost = routing_cost + VEHICLE_WEIGHT * vehicle_count + VEHICLE_OVERLOAD_PENALTY * overload_route_count + int(EXPECTED_SERVICES_PENALTY * irregular_services_count) + EXPECTED_SPACING_PENALTY * irregular_spacing_count
         return cost
 
     # END COST EVALUATION
