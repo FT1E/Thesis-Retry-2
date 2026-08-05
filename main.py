@@ -87,7 +87,7 @@ N = 5      # how many top candidates to consider based on estimation
 
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
-print(f"Running Local Search with top {N} opearations according to estimation")
+print(f"Running Local Search with top {N} operations according to estimation")
 
 start = time.time()
 

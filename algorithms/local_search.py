@@ -654,18 +654,20 @@ def full_evaluate_topN_best_estimate(best_ops, solution):
         score = solution.evaluate()
         
         if score < before_score:
-            return True, score
+            return True, score, op_tuple
         
         # else undo_op
         undo_op(*args, undo_info = undo_info, **kwargs)
 
-    return False, before_score
+    return False, before_score, None
 
 def full_evaluate_topN_best_full_eval(best_ops, solution):
     # evaluate all the best_ops and apply the best one
     # return result is False if no op_tuple actually improves solution score
     # else it's true and best op is applied
     # second part of return result is score of new (or old if not improving) solution
+    # third part of return result is the min op tuple if any improved
+    # in case some arguments are needed
 
     # baseline is the solution score before applying any op
     min_score = solution.evaluate()
@@ -691,7 +693,7 @@ def full_evaluate_topN_best_full_eval(best_ops, solution):
         
         improved = True
 
-    return improved, min_score
+    return improved, min_score, min_op
 
 # below function for just applying the best operator
 def apply_operator(operator, *args, **kwargs):
@@ -755,9 +757,9 @@ def phase_1(working, N=5, best_full_eval=True):
 
         # ? note solution is part of args
         if best_full_eval:
-            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
 
         iter_end = time.time()
@@ -836,9 +838,9 @@ def phase_2(working, N=5, best_full_eval=True):
 
         # ? note solution is part of args
         if best_full_eval:
-            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
 
             
@@ -876,10 +878,8 @@ def phase_2_only_swap_services(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
     best_score = original_score
 
-    best_op_tuple = None
     best_score = original_score
     
-    work_days = set(working.get_work_days())
     
     iteration_count = 0
     iteration_avg_time = 0
@@ -914,9 +914,9 @@ def phase_2_only_swap_services(working, N=5, best_full_eval=True):
 
         # ? note solution is part of args
         if best_full_eval:
-            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
 
             
@@ -949,8 +949,8 @@ def phase_2_only_swap_services(working, N=5, best_full_eval=True):
     return working, best_score, best_score < original_score
 
 
-# ? PHASE 3 - route operators, two_opt, move (single) and move_pair, best move applied for each day
-def phase_3(working, N=5, best_full_eval=True):
+# ? PHASE 4 - route operators, two_opt, move (single) and move_pair, best move applied for each day
+def phase_4(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
 
     best_score = original_score
@@ -1010,9 +1010,9 @@ def phase_3(working, N=5, best_full_eval=True):
             
             # ? note solution is part of args
             if best_full_eval:
-                improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+                improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
             else:
-                improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+                improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
    
 
             iter_end = time.time()
@@ -1091,9 +1091,9 @@ def improved_phase_1(working, N=5, best_full_eval=True):
                 
         
             if best_full_eval:
-                improved_edge, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+                improved_edge, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
             else:
-                improved_edge, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+                improved_edge, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
             if improved_edge:
                 improved = True
@@ -1109,9 +1109,9 @@ def improved_phase_1(working, N=5, best_full_eval=True):
                 evaluate_operator_topN(best_estimates, best_op_tuples, remove_service_operator, undo_remove_service_operator, working, day, edge, N=N)
 
             if best_full_eval:
-                improved_edge, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+                improved_edge, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
             else:
-                improved_edge, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+                improved_edge, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
             if improved_edge:
                 improved = True
@@ -1189,9 +1189,9 @@ def improved_phase_2(working, N=5, best_full_eval=True):
 
         
         if best_full_eval:
-            improved, best_score = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score = full_evaluate_topN_best_estimate(best_op_tuples, working)
+            improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
 
         iter_end = time.time()
@@ -1304,16 +1304,17 @@ def improved_phase_3(working, N=5, best_full_eval=True):
 
 
         if best_full_eval:
-            improved, best_score, kwargs = full_evaluate_topN_best_full_eval(best_op_tuples, working, return_kwargs=True)
+            improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score, kwargs = full_evaluate_topN_best_estimate(best_op_tuples, working, return_kwargs=True)
+            improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
-        # todo - best estimation method doesn't return kwargs
-        # todo - either deelete best estimation or fix it
-        if improved:
-            # then kwargs is not None
+        if min_op_tuple is not None:
+            # (op, undo_op, args, kwargs)
+            kwargs = min_op_tuple[3]
+
             edge_1, edge_2 = kwargs.values()
-            # todo - swap them in the edges patterns
+
+            # - swap their edge patterns value
             edge_patterns[edge_1.sid], edge_patterns[edge_2.sid] = edge_patterns[edge_2.sid], edge_patterns[edge_1.sid]
 
         iter_end = time.time()
@@ -1324,14 +1325,14 @@ def improved_phase_3(working, N=5, best_full_eval=True):
 
         if iter_end - last_report > 600:
             last_report = iter_end
-            print(f"Phase 3 mid-report:")
+            print(f"Phase 3 (using only swap_services) mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
             print(f"Average iteration time: {iteration_avg_time}")
             print(f"Current score: {best_score}")
             
-    print("Phase 3 ended!")
-    print("Phase 3 Report:")
+    print("Phase 3 (using only swap_services) ended!")
+    print("Phase 3 (using only swap_services) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
@@ -1342,6 +1343,10 @@ def improved_phase_3(working, N=5, best_full_eval=True):
     pass
 
 # ? previously phase 3
+# ? since route operators using different routes as arguments don't affect each other
+# ? only re-calculate route operators using arguments who have at least 1 route which was part of previous best iteration
+# ? each route op uses exactly 2 routes
+# ? so re-calculate route ops which have as argument at least one of those two routes
 def improved_phase_4(working):
     # todo
     pass
@@ -1395,26 +1400,29 @@ def run(solution, topN = 5, best_full_eval = True):
         # print(current_best_solution)
 
 
-        # phase 2 - move services from 1 day to another day and swap service days of edges with same frequency 
-        current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
-        # current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution)
+        # phase 2 - move services from 1 day to another day 
+        # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
         p2_end_time = time.time()
 
         if phase_improving:
             improving = True
 
-        # phase 3 - improve the routes
-        current_best_solution, best_score, phase_improving = phase_3(current_best_solution, N=topN, best_full_eval = best_full_eval)
-        # current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution)
+        # phase 3 - swap service days of edges with same frequency 
+        current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution, N=topN, best_full_eval = best_full_eval)
+
+        if phase_improving:
+            improving = True
+
+
+        # phase 4 - improve the routes
+        current_best_solution, best_score, phase_improving = phase_4(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
         if phase_improving:
             improving = True
 
         iteration_end_time = time.time()
-        if iteration_count == 1:
-            print(f"Phase 3 ended after {iteration_end_time - p2_end_time} seconds")
-            print(f"Current score: {best_score}")
         
 
         iteration_time_taken = iteration_end_time - iteration_start_time
@@ -1429,6 +1437,7 @@ def run(solution, topN = 5, best_full_eval = True):
         if iteration_count == 1:
             print("\nSolution after going through each phase once:\n\n")
             print(current_best_solution)
+            print('\n\n')
         
     print(f"Local search ended after {iteration_count} iterations.")
     print(f"Last iteration time: {iteration_time_taken} seconds")
