@@ -577,16 +577,15 @@ def binary_insertion(lst, num):
         return 0
     
     begin = 0
-    end = len(lst) - 1
-    mid = len(lst) // 2
+    end = len(lst)
     while begin < end:
+        mid = (begin + end) // 2
         if num < lst[mid]:
             end = mid
         else:
             begin = mid + 1
-        mid = (begin + end) // 2
 
-    if mid == len(lst) - 1:
+    if mid == len(lst) - 1 and num >= lst[mid]:
         # mid+1 so that I know that it's 
         # either equal to the last one or bigger than last one 
         # otherwise a bigger value always pushes out a smaller value at the end
