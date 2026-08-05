@@ -1432,14 +1432,18 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                 kwargs = min_op_tuple[3]
                 affected_route_1, affected_route_2 = kwargs.values()
 
+
+                remove_list = []
                 # ? - iterate through best_ops and remove_ops which have non-existing routes (from two-opt) or use routes which were modified (move_single or move_pair)
                 for i, op_tuple in enumerate(best_op_tuples.copy()):
                     kwargs = op_tuple[3]
                     routes = kwargs.values()
                     if affected_route_1 in routes or affected_route_2 in routes:
-                        best_op_tuples.pop(i)
-                        best_estimates.pop(i)
-
+                        remove_list.append(i)
+                        
+                for i in remove_list[::-1]:
+                    best_op_tuples.pop(i)
+                    best_estimates.pop(i)
 
                 if min_op_tuple[0] is two_opt_routes_operator:
                     route_1 = working.days[day].routes[-1]
