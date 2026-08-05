@@ -585,11 +585,6 @@ def binary_insertion(lst, num):
         else:
             begin = mid + 1
 
-    if mid == len(lst) - 1 and num >= lst[mid]:
-        # mid+1 so that I know that it's 
-        # either equal to the last one or bigger than last one 
-        # otherwise a bigger value always pushes out a smaller value at the end
-        return mid + 1
     return mid
 
 
