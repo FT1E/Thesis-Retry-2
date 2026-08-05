@@ -1027,7 +1027,7 @@ def phase_4(working, N=5, best_full_eval=True):
             iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
 
             if iteration_count % 10 == 1:
-                print(f"Phase 3 mid-report:")
+                print(f"Phase 4 (routing ops) mid-report:")
                 print(f"Current day: {day}")
                 print(f"Iteration count: {iteration_count}")
                 print(f"Last iteration time: {last_iteration_time}")
@@ -1035,15 +1035,15 @@ def phase_4(working, N=5, best_full_eval=True):
                 print(f"Current score: {best_score}\n")
 
 
-        print(f"\nPhase 3 day {day} ended!")
-        print("Phase 3 day report:")
+        print(f"\nPhase 4 (routing ops) day {day} ended!")
+        print("Phase 4 (routing ops) day report:")
         print(f"Current Iteration count: {iteration_count}")
         print(f"Last iteration time: {last_iteration_time}")
         print(f"Average iteration time: {iteration_avg_time}")
         print(f"Current score: {best_score}\n")
 
-    print("\nPhase 3 ended!")
-    print("Phase 3 Report:")
+    print("\nPhase 4 (routing ops) ended!")
+    print("Phase 4 (routing ops) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
@@ -1344,7 +1344,7 @@ def improved_phase_3(working, N=5, best_full_eval=True):
 
 
 
-    pass
+    return working, best_score, best_score < original_score
 
 # ? previously phase 3
 # ? since route operators using different routes as arguments don't affect each other
@@ -1440,14 +1440,14 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                     routes = kwargs.values()
                     if affected_route_1 in routes or affected_route_2 in routes:
                         remove_list.append(i)
-                        
+
                 for i in remove_list[::-1]:
                     best_op_tuples.pop(i)
                     best_estimates.pop(i)
 
                 if min_op_tuple[0] is two_opt_routes_operator:
                     route_1 = working.days[day].routes[-1]
-                    if len(routes) > 1:
+                    if len(working.days[day].routes) > 1:
                         route_2 = working.days[day].routes[-2]
                     else:
                         route_2 = None     
@@ -1456,12 +1456,12 @@ def improved_phase_4(working, N=5, best_full_eval=True):
 
                 
 
-                # todo - re-calculate the estimates for ops using a modified route
+                # ? - re-calculate the estimates for ops using a modified route
                 routes = working.days[day].routes.copy()
 
                 for r1_pos in range(len(route_1.targets)):
                     for route_3 in routes:
-                        for r3_pos in route_3.targets:
+                        for r3_pos in range(len(route_3.targets)):
                             evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r3_pos, route_1 = route_1, route_2 = route_3)
                         
                             # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
@@ -1477,7 +1477,7 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                 if route_2 is not None:
                     for r2_pos in range(len(route_2.targets)):
                         for route_3 in routes:
-                            for r3_pos in route_3.targets:
+                            for r3_pos in range(len(route_3.targets)):
                                 evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r2_pos, r3_pos, route_1 = route_2, route_2 = route_3)
                             
                                 # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
@@ -1562,9 +1562,7 @@ def run(solution, topN = 5, best_full_eval = True):
         # current_best_solution, best_score, phase_improving = phase_1(current_best_solution, N=N, best_full_eval = best_full_eval)
         current_best_solution, best_score, phase_improving = improved_phase_1(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
-        # print("Skipped phase 1!")
 
-        p1_end_time = time.time()
 
         if phase_improving:
             improving = True
@@ -1577,8 +1575,6 @@ def run(solution, topN = 5, best_full_eval = True):
         # phase 2 - move services from 1 day to another day 
         # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
         current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
-
-        p2_end_time = time.time()
 
         if phase_improving:
             improving = True
