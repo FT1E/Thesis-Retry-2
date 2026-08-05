@@ -303,7 +303,7 @@ def undo_swap_services_operator(solution, edge_1, edge_2, undo_info):
 
 
 # ? Take 2 routes, cut the routes in 2 (or don't), and merge a cut of a route with the cut of the other route
-def two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, solution=None, day = None):
+def two_opt_routes_operator(solution, r1_cutpoint, r2_cutpoint, route_1, route_2):
     #   - only if the two routes are in the same day
     #   - and they are different routes
 
@@ -313,12 +313,7 @@ def two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, solution
     if route_1.day != route_2.day:
         return None
 
-    if solution is not None:
-        day = solution.days[route_1.day]
-    elif day is None:
-        print("Calling two_opt op with solution and day both None")
-        return None
-    # else day is not None and work with it
+    day = solution.days[route_1.day]
 
     # working only with the routes
     # not removing and adding services to the day, since it's the same day
@@ -393,15 +388,11 @@ def two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, solution
     return cnt, estimate
 
 
-def undo_two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, undo_info, solution=None, day = None):
+def undo_two_opt_routes_operator(solution, r1_cutpoint, r2_cutpoint, route_1, route_2, undo_info):
 
     route_cnt = undo_info
 
-    if solution is not None:
-        day = solution.days[route_1.day]
-    elif day is None:
-        print("Calling undo_two_opt_routes_operator with solution and day both None")
-        return None
+    day = solution.days[route_1.day]
 
     for _ in range(route_cnt):
         day.remove_route(route_id = -1)
@@ -421,7 +412,7 @@ def undo_two_opt_routes_operator(route_1, route_2, r1_cutpoint, r2_cutpoint, und
 
 
 # ? Move a single service from one route to a different route in the same day
-def route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, solution = None, day = None):
+def route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2):
     #   - only if the routes are in the same day
     #   - and they are different routes
 
@@ -437,12 +428,8 @@ def route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, solution
     if edge_1_id >= len(route_1.targets):
         return None
 
-    if solution is not None:
-        day = solution.days[route_1.day]
-    elif day is None:
-        print("Calling route_move_service_operator with solution and day both None")
-        return None
-
+    day = solution.days[route_1.day]
+    
     # since an edge is MOVED FROM route 1, it's definetely not empty at this point
     cost_before = route_1.evaluate(day.vehicle) + route_2.evaluate(day.vehicle) + VEHICLE_WEIGHT
     # route 2 may be empty before move - for undo, but still just to be safe
@@ -482,9 +469,9 @@ def route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, solution
 
     return None, estimate
 
-def undo_route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, undo_info = None, solution = None, day = None):
+def undo_route_move_service_operator(solution, edge_1_id, edge_2_id, route_1, route_2, undo_info = None):
     # call same operator with arguments reversed
-    route_move_service_operator(edge_2_id, edge_1_id, route_2, route_1, solution, day)
+    route_move_service_operator(solution, edge_2_id, edge_1_id, route_2, route_1)
 
     # assert route_1 in solution.days[route_1.day].routes
     # assert route_2 in solution.days[route_1.day].routes
@@ -492,7 +479,7 @@ def undo_route_move_service_operator(edge_1_id, edge_2_id, route_1, route_2, und
 
 
 # ? Take a pair (2 edges served one after another in the same route) and move it to a different route in the same day
-def route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, solution = None, day = None):
+def route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b):
     #   - routes are in the same day
     #   - and they are different routes
 
@@ -503,12 +490,8 @@ def route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, s
     if edge_a12_id + 1 >= len(route_a.targets):
         return None
 
-    if solution is not None:
-        day = solution.days[route_a.day]
-    elif day is None:
-        print("Calling route_move_pair_service_operator with solution and day both None")
-        return None
-
+    day = solution.days[route_a.day]
+    
     # since edges are MOVED FROM route a, it's definetely not empty at this point
     cost_before = route_a.evaluate(day.vehicle) + route_b.evaluate(day.vehicle) + VEHICLE_WEIGHT
     # route b may be empty before move - for undo, but still just to be safe
@@ -516,11 +499,11 @@ def route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, s
 
     
     # if some check fails, then op can't be done
-    if route_move_service_operator(edge_a12_id + 1, edge_b_id, route_a, route_b, solution, day) is None:
+    if route_move_service_operator(solution, edge_a12_id + 1, edge_b_id, route_a, route_b) is None:
         return None
 
     # otherwise all checks are done in above op call
-    route_move_service_operator(edge_a12_id, edge_b_id, route_a, route_b, solution, day)
+    route_move_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b)
 
 
     # since edges were MOVED TO route b, it's definetely not empty
@@ -532,9 +515,9 @@ def route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, s
 
     return None, estimate
 
-def undo_route_move_pair_service_operator(edge_a12_id, edge_b_id, route_a, route_b, undo_info = None, solution = None, day = None):
+def undo_route_move_pair_service_operator(solution, edge_a12_id, edge_b_id, route_a, route_b, undo_info = None):
     # same op call with arguments in different order
-    route_move_pair_service_operator(edge_b_id, edge_a12_id, route_b, route_a, solution, day)
+    route_move_pair_service_operator(solution, edge_b_id, edge_a12_id, route_b, route_a)
 
 
 
@@ -638,6 +621,29 @@ def evaluate_operator_topN(best_estimates, best_ops, op, undo_op, *args, N=5, **
         if len(best_estimates) > N:
             best_estimates.pop()
             best_ops.pop()
+
+# similar as above but this one keeps all op_tuples
+# but when doing full evaluation only pass the top N, corresponding to argument
+def evaluate_operator_keepAll(best_estimates, best_ops, op, undo_op, *args, **kwargs):
+    # evaluatethe newly provided op and see if it is part of top5 according to estimate
+    
+    # best_estimates and best_ops are arrays of length 0 to N
+    # for first N candidates in iteration it grows from 0 to N, then it only keeps top N found until then
+
+    res = op(*args, **kwargs)
+    if res is None:
+        return None
+    
+    undo_info, new_estimate = res
+
+    undo_op(*args, undo_info=undo_info, **kwargs)
+
+    pos = binary_insertion(best_estimates, new_estimate)
+    best_estimates.insert(pos, new_estimate)
+    op_tuple = (op, undo_op, args, kwargs)
+    best_ops.insert(pos, op_tuple)
+    
+
 
 def full_evaluate_topN_best_estimate(best_ops, solution):
     # evaluate the best_ops in order of best_estimates and apply the first one which actually improves
@@ -1000,12 +1006,12 @@ def phase_4(working, N=5, best_full_eval=True):
                         for r2_pos in range(len(route2.targets)):
 
                             if can_do_two_opt:
-                                evaluate_operator_topN(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, route1, route2, r1_pos, r2_pos, N=N, solution = working)
+                                evaluate_operator_topN(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r2_pos, route1, route2, N=N)
                             
-                            evaluate_operator_topN(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, r1_pos, r2_pos, route1, route2, N=N, solution = working)
+                            evaluate_operator_topN(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r2_pos, route1, route2, N=N)
 
                             if can_do_pair_move:
-                                evaluate_operator_topN(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, r1_pos, r2_pos, route1, route2, N=N, solution = working)
+                                evaluate_operator_topN(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r2_pos, route1, route2, N=N)
             
             
             # ? note solution is part of args
@@ -1229,7 +1235,6 @@ def improved_phase_2(working, N=5, best_full_eval=True):
 # ? some edges may have the same service day pattern
 # ? every edge attempts a swap with each unique pattern once,
 # ? it's useless to try to attempt swap with 2 edges who have the same service day pattern
-# TODO - need to test it for use
 def improved_phase_3(working, N=5, best_full_eval=True):
     # todo
     original_score = working.evaluate()
@@ -1285,20 +1290,19 @@ def improved_phase_3(working, N=5, best_full_eval=True):
         # todo - perform op
         for freq, bucket in working.frequency_buckets.items():
 
-            for edge_1 in bucket:
-                
-                candidates = []
-                patterns_used = []
-                for edge_2 in bucket:
-                    if edge_patterns[edge_2.sid] not in patterns_used:
-                        candidates.append(edge_2)
-                        patterns_used.append(edge_patterns[edge_2.sid])
-                        if len(patterns_used) == len(patterns[freq]):
-                            break
+            candidates = []
+            patterns_used = []
+            for edge_2 in bucket:
+                if edge_patterns[edge_2.sid] not in patterns_used:
+                    candidates.append(edge_2)
+                    patterns_used.append(edge_patterns[edge_2.sid])
+                    if len(patterns_used) == len(patterns[freq]):
+                        break
+            for edge_1 in bucket:                
 
                 for edge_2 in candidates:
                     # try to perform a swap only with 1 candidate who has service_days == patterns[freq][i]
-                    evaluate_operator_topN(best_estimates, best_op_tuples, swap_services_operator, undo_swap_services_operator, working, N=N, edge_1 = edge_1, edge_2 = edges[freq][i][0])
+                    evaluate_operator_topN(best_estimates, best_op_tuples, swap_services_operator, undo_swap_services_operator, working, N=N, edge_1 = edge_1, edge_2 = edge_2)
 
         
 
@@ -1347,9 +1351,175 @@ def improved_phase_3(working, N=5, best_full_eval=True):
 # ? only re-calculate route operators using arguments who have at least 1 route which was part of previous best iteration
 # ? each route op uses exactly 2 routes
 # ? so re-calculate route ops which have as argument at least one of those two routes
-def improved_phase_4(working):
-    # todo
-    pass
+
+# ? PHASE 4 - route operators, two_opt, move (single) and move_pair, best move applied for each day
+
+# todo - initial calculation and then re-calculate only using the affected routes in while loop
+# todo - remove from best ops the ones which use arguments which need to be re-calculated or have route which doesn't exist
+# todo - recalculate
+# todo - keep all op_tuples, sorted by estimation, but only full_evaluate on top N
+def improved_phase_4(working, N=5, best_full_eval=True):
+    original_score = working.evaluate()
+
+    best_score = original_score
+
+    # 1 iteration affects one day, otherwise iter_count == number of work days
+    # counting like this bcs of better locality and bcs some days require extra iterations others require less iterations
+    iteration_count = 0
+    iteration_avg_time = 0
+
+    
+    work_days = working.get_work_days()
+
+    # better locality if iterating on each day repeatedly as long as there is an improvement, then continue on to next day
+    
+    # ? iterate in the same day as long as there is an improvement, then move on to the next  one
+    for day in work_days:
+
+        # reset values when moving to next day
+        # ? saving best N tuples based on estimation
+        best_op_tuples = []
+        best_estimates = []
+
+        # ? calculate initial estimates
+
+        routes = working.days[day].routes.copy()
+
+        for i_count, route1 in enumerate(routes):
+            for r1_pos in range(len(route1.targets)):
+
+                can_do_pair_move = r1_pos + 1 < len(route1.targets)
+
+                for j_count, route2 in enumerate(routes):
+                    if i_count == j_count:
+                        continue
+                    
+                    can_do_two_opt = i_count < j_count  # to perform this op on every unordered pair of routes
+                    # other ops perform work on every ordered pair of routes
+
+                    for r2_pos in range(len(route2.targets)):
+
+                        if can_do_two_opt:
+                            evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r2_pos, route_1 = route1, route_2 = route2)
+                        
+                        evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r2_pos, route_1 = route1, route_2 = route2)
+
+                        if can_do_pair_move:
+                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r2_pos, route_a = route1, route_b = route2)
+
+
+        improved = True
+        while improved:
+            improved = False
+
+            iteration_count += 1
+
+            iter_start = time.time()
+
+            
+            # ? note solution is part of args
+            # only pass the top N evaluations
+            if best_full_eval:
+                improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples[:(min(len(best_op_tuples), N))], working)
+            else:
+                improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples[:(min(len(best_op_tuples), N))], working)
+   
+            # ? re-calculate only for routes involving the routes from previous best op
+
+            if min_op_tuple is not None:
+                # then improved is True
+
+                kwargs = min_op_tuple[3]
+                affected_route_1, affected_route_2 = kwargs.values()
+
+                # ? - iterate through best_ops and remove_ops which have non-existing routes (from two-opt) or use routes which were modified (move_single or move_pair)
+                for i, op_tuple in enumerate(best_op_tuples.copy()):
+                    kwargs = op_tuple[3]
+                    routes = kwargs.values()
+                    if affected_route_1 in routes or affected_route_2 in routes:
+                        best_op_tuples.pop(i)
+                        best_estimates.pop(i)
+
+
+                if min_op_tuple[0] is two_opt_routes_operator:
+                    route_1 = working.days[day].routes[-1]
+                    if len(routes) > 1:
+                        route_2 = working.days[day].routes[-2]
+                    else:
+                        route_2 = None     
+                else:
+                    route_1, route_2 = affected_route_1, affected_route_2  # for route_move_single and route_move_pair
+
+                
+
+                # todo - re-calculate the estimates for ops using a modified route
+                routes = working.days[day].routes.copy()
+
+                for r1_pos in range(len(route_1.targets)):
+                    for route_3 in routes:
+                        for r3_pos in route_3.targets:
+                            evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r3_pos, route_1 = route_1, route_2 = route_3)
+                        
+                            # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
+
+                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r3_pos, route_1 = route_1, route_2 = route_3)
+                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r3_pos, r1_pos, route_1 = route_3, route_2 = route_1)
+
+                            if r1_pos + 1 < len(route_1.targets):
+                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r3_pos, route_a = route_1, route_b = route_3)
+                            if r3_pos + 1 < len(route_3.targets):
+                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r3_pos, r1_pos, route_a = route_3, route_b = route_1)
+
+                if route_2 is not None:
+                    for r2_pos in range(len(route_2.targets)):
+                        for route_3 in routes:
+                            for r3_pos in route_3.targets:
+                                evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r2_pos, r3_pos, route_1 = route_2, route_2 = route_3)
+                            
+                                # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
+
+                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r2_pos, r3_pos, route_1 = route_2, route_2 = route_3)
+                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r3_pos, r2_pos, route_1 = route_3, route_2 = route_2)
+
+                                if r2_pos + 1 < len(route_2.targets):
+                                    evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r2_pos, r3_pos, route_a = route_2, route_b = route_3)
+                                if r3_pos + 1 < len(route_3.targets):
+                                    evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r3_pos, r2_pos, route_a = route_3, route_b = route_2)
+
+
+            
+            # if min_op_tuple is None then improved is False and will exit
+
+            iter_end = time.time()
+
+            last_iteration_time = iter_end - iter_start
+            iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
+
+            if iteration_count % 10 == 1:
+                print(f"Phase 4 (routing operators) mid-report:")
+                print(f"Current day: {day}")
+                print(f"Iteration count: {iteration_count}")
+                print(f"Last iteration time: {last_iteration_time}")
+                print(f"Average iteration time: {iteration_avg_time}")
+                print(f"Current score: {best_score}\n")
+
+
+        print(f"\nPhase 4 (routing operators) day {day} ended!")
+        print("Phase 4 (routing operators) day report:")
+        print(f"Current Iteration count: {iteration_count}")
+        print(f"Last iteration time: {last_iteration_time}")
+        print(f"Average iteration time: {iteration_avg_time}")
+        print(f"Current score: {best_score}\n")
+
+    print("\nPhase 4 (routing operators) ended!")
+    print("Phase 4 (routing operators) Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+
+    return working, best_score, best_score < original_score
+
 
 # END PHASE METHODS - IMPROVED VERSIONS
 
