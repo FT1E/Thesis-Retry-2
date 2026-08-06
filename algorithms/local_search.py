@@ -1683,6 +1683,7 @@ def run(solution, topN = 5, best_full_eval = True):
         # print("\nSolution after phase 1:\n\n")
         # print(current_best_solution)
 
+        # todo - maybe insert routing operators only phase (improved_phase_4) in-between phases 1,2,3
 
         # phase 2 - move services from 1 day to another day 
         # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
