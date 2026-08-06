@@ -1551,7 +1551,7 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                     # not actually a re-calculation, but first time calculation
                     recalc_1_id = routes[-1].rid
                     if len(routes) > 1:
-                        recalc_2_id = route[-2].rid
+                        recalc_2_id = routes[-2].rid
                 else:
                     # else the routes are the arguments in route_move single/double
                     # if one of them was left empty as a result, it won't be in Day.routes
