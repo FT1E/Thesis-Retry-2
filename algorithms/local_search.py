@@ -1574,7 +1574,6 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                         best_op_tuple = None
                         best_estimate = float('inf')
                         
-                        route_2 = routes[j]
                         for r1_pos in range(len(route_1.targets)):
 
                             for r2_pos in range(len(route_2.targets)):
