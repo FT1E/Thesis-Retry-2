@@ -1540,7 +1540,7 @@ def improved_phase_4(working, N=5, best_full_eval=True):
                 routes = working.days[day].routes.copy()
 
                 # remove from dictionary these values
-                for pair_ids, _ in best_ops.items():
+                for pair_ids in list(best_ops.keys()):
                     if pair_ids[0] == r1_id or pair_ids[0] == r2_id or pair_ids[1] == r1_id or pair_ids[1] == r2_id:
                         del best_ops[pair_ids]
 
