@@ -151,20 +151,13 @@ class Day:
         if not self.add_edge_in_list(edge):
             return False
 
-    
-        # else either make a new route if day has no routes, or insert it in a random one
-        if len(self.routes) == 0:
-            # if day has no routes
-            route = Route([edge])
-            self.add_route(route)
-            edge.routes[self.number] = route
-            # for below case .routes[day] is set in insert_edge
-        else:
-            # add it to a random route
-            # other operators will move it to a better route
-            route = random.choice(self.routes)
-            route.insert_edge(edge)
+        # make a new route for edge
+        # this will enable better route count balancing among days
 
+        route = Route([edge])
+        self.add_route(route)
+        edge.routes[self.number] = route
+        
         edge.add_service_day(self.number)
         
         return True    
