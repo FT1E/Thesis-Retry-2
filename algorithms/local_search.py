@@ -1714,7 +1714,7 @@ def run(solution, topN = 5, best_full_eval = True):
         print(f"Local search report:")
         print(f"Iteration count: {iteration_count} iterations")
         print(f"Last iteration time: {iteration_time_taken} seconds")
-        print(f"Iteration average time: {iteration_time_taken} seconds")
+        print(f"Iteration average time: {average_iteration_time} seconds")
         print(f"Current score: {best_score}")
 
         if iteration_count == 1:
@@ -1724,7 +1724,7 @@ def run(solution, topN = 5, best_full_eval = True):
         
     print(f"Local search ended after {iteration_count} iterations.")
     print(f"Last iteration time: {iteration_time_taken} seconds")
-    print(f"Iteration average time: {iteration_time_taken} seconds")
+    print(f"Iteration average time: {average_iteration_time} seconds")
     print(f"Original score: {original_score}")
     print(f"Current score: {best_score}")
 

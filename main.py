@@ -22,8 +22,8 @@ from solution_representation.Solution import Solution
 
 # local search
 from algorithms.local_search import run as run_ls
-GRAPH_ID = 2
-VEHICLE_ID = 6
+GRAPH_ID = 0
+VEHICLE_ID = 11
 
 
 DYNAMIC_CLUSTER_SIZE_LIMIT = 5
