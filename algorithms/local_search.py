@@ -1145,6 +1145,42 @@ def improved_phase_2(working, N=5, best_full_eval=True):
     last_report = time.time() - 600
 
 
+    # this can be a list here since all edge.sid maps to position in solution.demanded_edges
+    best_ops = [None] * len(working.demanded_edges)
+    # best_op[edge.sid] = best op_tuple for this edge with estimation at [0]
+
+    
+
+    # ? initial calculations - consider a almost all candidate space
+
+    # ? - check best estimate for move_service, same as in original phase_2
+    # ? - only ignore moving to obvious tight spacings - within less than (freq // 2) days from another service
+    for edge in working.demanded_edges:
+        
+        edge_best_op_tuples = []
+        best_estimations = []
+
+        tight_range = int(edge.freq // 2)
+
+        for d1 in edge.service_days:
+
+            # 1. estimate possible candidates for moving FROM d1
+            move_to_ignore_candidates = set()
+            for day in edge.service_days:
+                if day == d1:
+                    continue
+                for i in range(-tight_range, tight_range):
+                    move_to_ignore_candidates.add(day + i)
+
+            move_to_actual_candidates = work_days.difference(move_to_ignore_candidates)
+            
+            # 2. perform attempts on the candidate list
+            for d2 in move_to_actual_candidates:        
+                evaluate_operator_topN(best_estimations, edge_best_op_tuples, move_service_operator, undo_move_service_operator, working, d1, d2, edge, N=5)
+
+        # now we have the top 5 move_service op for this edge edge
+        best_ops[edge.sid] = (best_estimations, edge_best_op_tuples)
+
     improved = True
     while improved:
         improved = False
@@ -1157,35 +1193,86 @@ def improved_phase_2(working, N=5, best_full_eval=True):
         iteration_count += 1
         iter_start = time.time()
 
-
-        # ? - check best estimate for move_service, same as in original phase_2
-        # ? - only ignore moving to obvious tight spacings - within less than (freq // 2) days from another service
-        for edge in working.demanded_edges:
-            
-            tight_range = int(edge.freq // 2)
-
-            for d1 in edge.service_days:
-
-                # 1. estimate possible candidates for moving FROM d1
-                move_to_ignore_candidates = set()
-                for day in edge.service_days:
-                    if day == d1:
-                        continue
-                    for i in range(-tight_range, tight_range):
-                        move_to_ignore_candidates.add(day + i)
-
-                move_to_actual_candidates = work_days.difference(move_to_ignore_candidates)
-                
-                # 2. perform attempts on the candidate list
-                for d2 in move_to_actual_candidates:
-            
-                    evaluate_operator_topN(best_estimates, best_op_tuples, move_service_operator, undo_move_service_operator, working, d1, d2, edge, N = N)
+        # ? - sort best_ops for each edge
+        for edge_best_estimations, edge_best_op_tuples in best_ops:
+            for i in range(len(edge_best_estimations)):
+                estimation = edge_best_estimations[i]
+                op_tuple = edge_best_op_tuples[i]
+                pos = binary_insertion(best_estimates, estimation)
+                if pos < N:
+                    best_estimates.insert(pos, estimation)
+                    best_op_tuples.insert(pos, op_tuple)
 
         
         if best_full_eval:
-            improved, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples, working)
         else:
-            improved, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
+            improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples, working)
+
+        # ? keep a list of best 5 ops for each edge - memory space is O(n) = 5*n with n being the number of edges in solution
+        # ? recalculate ops for edges which have as d1 or d2 argument a day which was part of previous best op
+        # ? basically if top5 ops for an edge don't contain the days of prev best op, then only compare them with re-calculation for the affected days
+        # ? else gotta re-calculate all candidates to fill the top 5 ops list
+        
+        if min_op_tuple is not None:
+            # (op, undo_op, args, kwargs)
+            args = min_op_tuple[2]
+            # (working, d1, d2, edge)
+            affected_days = args[1:3]
+
+            recalculate = [False] * len(working.demanded_edges)
+
+            # find edges which have one of these days in their best op args
+            for edge in working.demanded_edges:
+                _, edge_best_op_tuples = best_ops[edge.sid]
+                for op_tuple in edge_best_op_tuples:
+                    args = op_tuple[2]
+                    d1 = args[1]
+                    d2 = args[2]
+                    if d1 in affected_days or d2 in affected_days:
+                        recalculate[edge.sid] = True
+                        break
+            
+            for i in range(len(recalculate)):
+                edge = working.demanded_edges[i]
+                if not recalculate[i]:
+                    # ? - only compare with re-calculations of affected days using evaluate_operator_topN on previous list
+                    # take the top 5 found from previous iterations
+                    best_estimations, edge_best_op_tuples = best_ops[edge.sid]
+                else:
+                    # else start the list from scratch
+                    edge_best_op_tuples = []
+                    best_estimations = []
+                    # compare them with re-calculations of affected days
+
+                
+                # re-calculation - same as initial calculations
+                # using tight_range to skip moves which are HIGHLY LIKELY not optimal    
+
+                tight_range = int(edge.freq // 2)
+
+                for d1 in edge.service_days:
+
+                    # 1. estimate possible candidates for moving FROM d1
+                    move_to_ignore_candidates = set()
+                    for day in edge.service_days:
+                        if day == d1:
+                            continue
+                        for i in range(-tight_range, tight_range):
+                            move_to_ignore_candidates.add(day + i)
+
+                    move_to_actual_candidates = work_days.difference(move_to_ignore_candidates)
+                    
+                    # 2. perform attempts on the candidate list
+                    for d2 in move_to_actual_candidates:
+                        if not recalculate[i] and d1 not in affected_days and d2 not in affected_days:
+                            # ? for one which didn't have the affected days in tops
+                            # ? only try the op if at least one of the days was affected by previous best op
+                            continue
+                        evaluate_operator_topN(best_estimations, edge_best_op_tuples, move_service_operator, undo_move_service_operator, working, d1, d2, edge, N=5)
+
+                    # now we have the top 5 move_service op for this edge edge
+                    best_ops[edge.sid] = (best_estimations, edge_best_op_tuples)
 
 
         iter_end = time.time()
@@ -1196,14 +1283,14 @@ def improved_phase_2(working, N=5, best_full_eval=True):
 
         if iter_end - last_report > 300:
             last_report = iter_end
-            print(f"Phase 2.0 only move_services mid-report:")
+            print(f"Phase 2 (only move_services) mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
             print(f"Average iteration time: {iteration_avg_time}")
             print(f"Current score: {best_score}")
             
-    print("Phase 2.0 (only move_services) ended!")
-    print("Phase 2.0 (only move_services) Report:")
+    print("Phase 2 (only move_services) ended!")
+    print("Phase 2 (only move_services) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
