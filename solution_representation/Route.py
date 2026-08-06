@@ -33,6 +33,11 @@ class Route:
 
     # GENERAL METHODS
 
+    @property
+    def rid(self):
+        # todo - maybe a custom id, but if this works fine keep it
+        return id(self)
+
     def __eq__(self, other):
         # full == when targets are same
         # checking length and demand before that, since it's highly unlikely that 2 routes have same length and demand if they have different targets

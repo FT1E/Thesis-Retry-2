@@ -249,10 +249,6 @@ def swap_services_operator(solution, edge_1, edge_2):
 
     cost_after = 0
 
-    # todo - evaluate routes before first
-    # todo - add edges after
-    # todo -evaluate routes after 
-
     for day in only_edge_1_days:
         cost_before += edge_1.routes[day].evaluate(solution.vehicle)
 
@@ -323,7 +319,6 @@ def two_opt_routes_operator(solution, r1_cutpoint, r2_cutpoint, route_1, route_2
 
 
     # TODO - maybe do some checking, cause I'm assuming both routes are non-empty
-    # todo - since number of vehicles is an important metric not allowing this operator to be used to split a single route into two
     cost_before = route_1.evaluate(day.vehicle) + route_2.evaluate(day.vehicle) + 2 * VEHICLE_WEIGHT
 
 
@@ -597,7 +592,7 @@ def evaluate_operator_topN(best_estimates, best_ops, op, undo_op, *args, N=5, **
 
     res = op(*args, **kwargs)
     if res is None:
-        return None
+        return
     
     undo_info, new_estimate = res
 
@@ -626,7 +621,7 @@ def evaluate_operator_keepAll(best_estimates, best_ops, op, undo_op, *args, **kw
 
     res = op(*args, **kwargs)
     if res is None:
-        return None
+        return
     
     undo_info, new_estimate = res
 
@@ -964,7 +959,6 @@ def phase_4(working, N=5, best_full_eval=True):
     work_days = working.get_work_days()
 
     # better locality if iterating on each day repeatedly as long as there is an improvement, then continue on to next day
-    # todo - parallelism - 1 thread per day, i.e. give a Day object and let its routes be modified
 
     # ? iterate in the same day as long as there is an improvement, then move on to the next  one
     for day in work_days:
@@ -1230,7 +1224,7 @@ def improved_phase_2(working, N=5, best_full_eval=True):
 # ? every edge attempts a swap with each unique pattern once,
 # ? it's useless to try to attempt swap with 2 edges who have the same service day pattern
 def improved_phase_3(working, N=5, best_full_eval=True):
-    # todo
+    
     original_score = working.evaluate()
 
     best_score = original_score
@@ -1281,7 +1275,6 @@ def improved_phase_3(working, N=5, best_full_eval=True):
         iter_start = time.time()
 
 
-        # todo - perform op
         for freq, bucket in working.frequency_buckets.items():
 
             candidates = []
@@ -1340,18 +1333,13 @@ def improved_phase_3(working, N=5, best_full_eval=True):
 
     return working, best_score, best_score < original_score
 
-# ? previously phase 3
-# ? since route operators using different routes as arguments don't affect each other
-# ? only re-calculate route operators using arguments who have at least 1 route which was part of previous best iteration
-# ? each route op uses exactly 2 routes
-# ? so re-calculate route ops which have as argument at least one of those two routes
 
 # ? PHASE 4 - route operators, two_opt, move (single) and move_pair, best move applied for each day
-
-# todo - initial calculation and then re-calculate only using the affected routes in while loop
-# todo - remove from best ops the ones which use arguments which need to be re-calculated or have route which doesn't exist
-# todo - recalculate
-# todo - keep all op_tuples, sorted by estimation, but only full_evaluate on top N
+# ? - initial calculation and then re-calculate only using the affected routes in while loop
+# ? - remove from best ops the ones which use arguments which need to be re-calculated or have route which doesn't exist
+# ? - recalculate
+# ? - don't keep all op_tuples, only keep the best op_tuple for each pair of routes
+# ? - once a route changes re-calculate the best op_tuple for every pair involving at least one of those two routes
 def improved_phase_4(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
 
@@ -1370,36 +1358,57 @@ def improved_phase_4(working, N=5, best_full_eval=True):
     # ? iterate in the same day as long as there is an improvement, then move on to the next  one
     for day in work_days:
 
-        # reset values when moving to next day
-        # ? saving best N tuples based on estimation
-        best_op_tuples = []
-        best_estimates = []
 
         # ? calculate initial estimates
+        # ? save top1 for each route pair in a day
 
         routes = working.days[day].routes.copy()
 
-        for i_count, route1 in enumerate(routes):
-            for r1_pos in range(len(route1.targets)):
+        best_ops  = dict()      # stores the best ops per pair
+        # uses route ids as keys, 
+        # (id1, id2) - ids of route1 and route2, 
+        # applying best op which uses those routes as arguments 
+        # re-calculate only if one of those routes was modified in previous iteration
 
-                can_do_pair_move = r1_pos + 1 < len(route1.targets)
+        for i, route_1 in enumerate(routes):
 
-                for j_count, route2 in enumerate(routes):
-                    if i_count == j_count:
-                        continue
-                    
-                    can_do_two_opt = i_count < j_count  # to perform this op on every unordered pair of routes
-                    # other ops perform work on every ordered pair of routes
 
-                    for r2_pos in range(len(route2.targets)):
+            for j in range(i+1, len(routes)):
+                # reset values when moving to next pair of routes
+                # ? saving top 1 tuple based on estimation
+                # ? it's a list so I don't have to create another method
+                best_op_tuple = None
+                best_estimate = float('inf')
 
-                        if can_do_two_opt:
-                            evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r2_pos, route_1 = route1, route_2 = route2)
+                route_2 = routes[j]
+                for r1_pos in range(len(route_1.targets)):
+
+                    for r2_pos in range(len(route_2.targets)):
+
+                        best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r2_pos, route_1 = route_1, route_2 = route_2)
                         
-                        evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r2_pos, route_1 = route1, route_2 = route2)
+                        # perform route_move_single and route_move_pair from both directions
+                        # ? note that this loop loops through every unordered pair of routes unlike the one in phase_4 at the point of writing this comment
+                        best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r2_pos, route_1 = route_1, route_2 = route_2)
+                        best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_service_operator, undo_route_move_service_operator, working, r2_pos, r1_pos, route_1 = route_2, route_2 = route_1)
 
-                        if can_do_pair_move:
-                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r2_pos, route_a = route1, route_b = route2)
+                        if r1_pos + 1 < len(route_1.targets):
+                            best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r2_pos, route_a = route_1, route_b = route_2)
+                        
+                        if r2_pos + 1 < len(route_2.targets):
+                            best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r2_pos, r1_pos, route_a = route_2, route_b = route_1)
+
+                # best_op_tuples holds the single best op_tuple based on estimation
+                # and estimation is worth more here since it's more accurate
+                
+                # ? if might be redundant, but better be safe than sorry
+                if best_op_tuple is not None:
+                    id1 = min(route_1.rid, route_2.rid)
+                    id2 = max(route_1.rid, route_2.rid)
+                    # create a new tuple using the estimate
+                    # now of the form (estimate, op, undo_op, args, kwargs)
+                    # ? doing this because estimate is more accurate here, meaning it's more useful
+                    best_ops[(id1, id2)] = (best_estimate, best_op_tuple)
 
 
         improved = True
@@ -1410,79 +1419,101 @@ def improved_phase_4(working, N=5, best_full_eval=True):
 
             iter_start = time.time()
 
-            
+
+            best_estimates = []
+            best_op_tuples = []
+
+            # ? extract the top N values from the dictionary
+            for op_est_tuple in best_ops.values():
+                estimation, op_tuple = op_est_tuple
+                pos = binary_insertion(best_estimates, estimation)
+                if pos < N:
+                    best_estimates.insert(pos, estimation)
+                    best_op_tuples.insert(pos, op_tuple)
+                    if len(best_estimates) > N:
+                        best_estimates.pop()
+                        best_op_tuples.pop()
+
             # ? note solution is part of args
             # only pass the top N evaluations
             if best_full_eval:
-                improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples[:(min(len(best_op_tuples), N))], working)
+                improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples, working)
             else:
-                improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples[:(min(len(best_op_tuples), N))], working)
+                improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples, working)
    
-            # ? re-calculate only for routes involving the routes from previous best op
-
+            # ? - re-calculate only for routes involving the routes from previous best op
             if min_op_tuple is not None:
-                # then improved is True
-
+                # op_tuple == (op, undo_op, args, kwargs)
                 kwargs = min_op_tuple[3]
                 affected_route_1, affected_route_2 = kwargs.values()
 
-
-                remove_list = []
-                # ? - iterate through best_ops and remove_ops which have non-existing routes (from two-opt) or use routes which were modified (move_single or move_pair)
-                for i, op_tuple in enumerate(best_op_tuples.copy()):
-                    kwargs = op_tuple[3]
-                    routes = kwargs.values()
-                    if affected_route_1 in routes or affected_route_2 in routes:
-                        remove_list.append(i)
-
-                for i in remove_list[::-1]:
-                    best_op_tuples.pop(i)
-                    best_estimates.pop(i)
-
-                if min_op_tuple[0] is two_opt_routes_operator:
-                    route_1 = working.days[day].routes[-1]
-                    if len(working.days[day].routes) > 1:
-                        route_2 = working.days[day].routes[-2]
-                    else:
-                        route_2 = None     
-                else:
-                    route_1, route_2 = affected_route_1, affected_route_2  # for route_move_single and route_move_pair
-
-                
-
-                # ? - re-calculate the estimates for ops using a modified route
+                r1_id = affected_route_1.rid
+                r2_id = affected_route_2.rid
+                # re-calculate best estimate for pairs having at least 1 route with this rid
                 routes = working.days[day].routes.copy()
 
-                for r1_pos in range(len(route_1.targets)):
-                    for route_3 in routes:
-                        for r3_pos in range(len(route_3.targets)):
-                            evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r3_pos, route_1 = route_1, route_2 = route_3)
+                # remove from dictionary these values
+                for pair_ids, _ in best_ops.items():
+                    if pair_ids[0] == r1_id or pair_ids[0] == r2_id or pair_ids[1] == r1_id or pair_ids[1] == r2_id:
+                        del best_ops[pair_ids]
+
+                op = min_op_tuple[0]
+                if op is two_opt_routes_operator:
+                    # if improving op was two-opt
+                    # then the routes for which re-calculation needs to be done are the new routes
+                    # not actually a re-calculation, but first time calculation
+                    recalc_1_id = routes[-1].rid
+                    if len(routes) > 1:
+                        recalc_2_id = route[-2].rid
+                else:
+                    # else the routes are the arguments in route_move single/double
+                    # if one of them was left empty as a result, it won't be in Day.routes
+                    recalc_1_id = r1_id
+                    recalc_2_id = r2_id
+
+                # ? the pair (route_1, route_2) which was part of previous best_op is evaluated twice but it's not that big of an issue
+                # ? i mean this gets from O(n^2) to O(n) with n being the number of routes in the day
+                for route_1 in routes:
+                    if route_1.rid != recalc_1_id and route_1.rid != recalc_2_id:
+                        continue
+
+                    for route_2 in routes:
+                        if route_1.rid == route_2.rid:
+                            # since operators will return None and not do any work might as well skip them
+                            continue
+
+                        # reset values when moving to next pair of routes
+                        # ? saving top 1 tuple based on estimation
+                        best_op_tuple = None
+                        best_estimate = float('inf')
                         
-                            # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
+                        route_2 = routes[j]
+                        for r1_pos in range(len(route_1.targets)):
 
-                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r3_pos, route_1 = route_1, route_2 = route_3)
-                            evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r3_pos, r1_pos, route_1 = route_3, route_2 = route_1)
+                            for r2_pos in range(len(route_2.targets)):
 
-                            if r1_pos + 1 < len(route_1.targets):
-                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r3_pos, route_a = route_1, route_b = route_3)
-                            if r3_pos + 1 < len(route_3.targets):
-                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r3_pos, r1_pos, route_a = route_3, route_b = route_1)
+                                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, two_opt_routes_operator, undo_two_opt_routes_operator, working, r1_pos, r2_pos, route_1 = route_1, route_2 = route_2)
+                                
+                                # perform route_move_single and route_move_pair from both directions
+                                # ? note that this loop loops through every unordered pair of routes unlike the one in phase_4 at the point of writing this comment
+                                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_service_operator, undo_route_move_service_operator, working, r1_pos, r2_pos, route_1 = route_1, route_2 = route_2)
+                                best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_service_operator, undo_route_move_service_operator, working, r2_pos, r1_pos, route_1 = route_2, route_2 = route_1)
 
-                if route_2 is not None:
-                    for r2_pos in range(len(route_2.targets)):
-                        for route_3 in routes:
-                            for r3_pos in range(len(route_3.targets)):
-                                evaluate_operator_keepAll(best_estimates, best_op_tuples, two_opt_routes_operator, undo_two_opt_routes_operator, working, r2_pos, r3_pos, route_1 = route_2, route_2 = route_3)
-                            
-                                # perform route_move_single and route_move_pair using reversed arguments as well, since it's different op call
-
-                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r2_pos, r3_pos, route_1 = route_2, route_2 = route_3)
-                                evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_service_operator, undo_route_move_service_operator, working, r3_pos, r2_pos, route_1 = route_3, route_2 = route_2)
-
+                                if r1_pos + 1 < len(route_1.targets):
+                                    best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r1_pos, r2_pos, route_a = route_1, route_b = route_2)
+                                
                                 if r2_pos + 1 < len(route_2.targets):
-                                    evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r2_pos, r3_pos, route_a = route_2, route_b = route_3)
-                                if r3_pos + 1 < len(route_3.targets):
-                                    evaluate_operator_keepAll(best_estimates, best_op_tuples, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r3_pos, r2_pos, route_a = route_3, route_b = route_2)
+                                    best_estimate, best_op_tuple = evaluate_operator(best_estimate, best_op_tuple, route_move_pair_service_operator, undo_route_move_pair_service_operator, working, r2_pos, r1_pos, route_a = route_2, route_b = route_1)
+
+                        # best_op_tuples holds the single best op_tuple based on estimation
+                        # and estimation is worth more here since it's more accurate
+
+                        # ? if might be redundant, but better be safe than sorry
+                        if best_op_tuple is not None:
+                            id1 = min(route_1.rid, route_2.rid)
+                            id2 = max(route_1.rid, route_2.rid)
+                            best_ops[(id1, id2)] = (best_estimate, best_op_tuple)
+
 
 
             
@@ -1581,7 +1612,8 @@ def run(solution, topN = 5, best_full_eval = True):
 
 
         # phase 4 - improve the routes
-        current_best_solution, best_score, phase_improving = phase_4(current_best_solution, N=topN, best_full_eval = best_full_eval)
+        # current_best_solution, best_score, phase_improving = phase_4(current_best_solution, N=topN, best_full_eval = best_full_eval)
+        current_best_solution, best_score, phase_improving = improved_phase_4(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
         if phase_improving:
             improving = True
