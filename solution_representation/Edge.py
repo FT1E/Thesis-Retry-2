@@ -264,7 +264,7 @@ class Edge:
         # 0 == not under satisfied (has services >= lower bound)
         # 1 == completely under satisfied - ie has 0 services
         service_count = len(self.service_days)
-        expected_service_count = math.floor(vehicle['planning_duration'] / math.ceil(self.freq))
+        expected_service_count = math.floor(vehicle['planning_duration'] / self.freq)
         
         if expected_service_count <= service_count:
             return 0
@@ -276,7 +276,7 @@ class Edge:
         # 1 == completely over satisfied - ie has max services, every day
 
         service_count = len(self.service_days)
-        expected_service_count = math.ceil(vehicle['planning_duration'] / math.ceil(self.freq))
+        expected_service_count = math.ceil(vehicle['planning_duration'] / self.freq)
         
         if expected_service_count >= service_count:
             return 0

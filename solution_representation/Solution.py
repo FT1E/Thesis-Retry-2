@@ -114,10 +114,8 @@ class Solution:
 
         for edge in self.demanded_edges:
             # number of services penalty
-            if edge.is_under_satisfied(self.vehicle):
-                irregular_services_count += edge.under_satisfaction_size(self.vehicle)
-            elif edge.is_over_satisfied(self.vehicle):
-                irregular_services_count += edge.over_satisfaction_size(self.vehicle)
+            irregular_services_count += edge.under_satisfaction_size(self.vehicle)
+            irregular_services_count += edge.over_satisfaction_size(self.vehicle)
 
 
             irregular_spacing_count += edge.get_irregular_spacing_count(self.vehicle)
