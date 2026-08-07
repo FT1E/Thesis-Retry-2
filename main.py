@@ -4,8 +4,9 @@
 import math
 import time
 from datetime import timedelta
+import sys
 
-from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data
+from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data, graph_data_directory
 from util.min_distances import calculate_distances
 from solution_representation.Edge import PriorityType
 
@@ -24,6 +25,12 @@ from solution_representation.Solution import Solution
 from algorithms.local_search import run as run_ls
 GRAPH_ID = 0
 VEHICLE_ID = 11
+
+if len(sys.argv) == 3:
+    GRAPH_ID = int(sys.argv[1])
+    VEHICLE_ID = int(sys.argv[2])
+
+print(f"Graph Data file used: {os.listdir(graph_data_directory)[GRAPH_ID]}\n")
 
 
 DYNAMIC_CLUSTER_SIZE_LIMIT = 5
