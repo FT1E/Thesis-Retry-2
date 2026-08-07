@@ -141,7 +141,7 @@ irregular_spacing_count, irreg_space_count_edges = ls_improved_solution.get_irre
 print(f"Overloaded route count: {overloaded_route_count}")
 print(f"Irregular services count: {irregular_services_count}")
 print(f"Irregular spacing count: {irregular_spacing_count}")
-print(f"Irregular spacing count edges:\n")
+# print(f"Irregular spacing count edges:\n")
 # for edge in irreg_space_count_edges:
 #     print(f"\t{edge}")
 #     print(f"\tService days:{edge.service_days}")
