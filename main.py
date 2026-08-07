@@ -3,8 +3,9 @@
 
 import math
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 import sys
+import os
 
 from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data, graph_data_directory
 from util.min_distances import calculate_distances
@@ -31,7 +32,7 @@ if len(sys.argv) == 3:
     VEHICLE_ID = int(sys.argv[2])
 
 print(f"Graph Data file used: {os.listdir(graph_data_directory)[GRAPH_ID]}\n")
-
+print(f"Program starting at: {datetime.now()}")
 
 DYNAMIC_CLUSTER_SIZE_LIMIT = 5
 

@@ -151,8 +151,8 @@ class Edge:
     def remove_service_day(self, day):
         self.service_days.remove(day)
 
-    def swap_service_days(self, other_edge : Edge):
-        self.service_days, other_edge.service_days = other_edge.service_days, self.service_days
+    # def swap_service_days(self, other_edge : Edge):
+    #     self.service_days, other_edge.service_days = other_edge.service_days, self.service_days
 
     # END METHODS FOR MANAGING SERVICE_DAYS
 
