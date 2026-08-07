@@ -110,3 +110,36 @@ print(f"Greedy algorithm time: {timedelta(seconds = greedy_time)} seconds")
 print(f"LS time: {timedelta(seconds = ls_time)}")
 print(f"LS return score: {ls_score}")
 print(f"Final solution score: {ls_improved_solution.evaluate()}")
+
+
+
+max_routes = 0
+min_routes = float('inf')
+for d in ls_improved_solution.get_work_days():
+    day = ls_improved_solution.days[d]
+    max_routes = max(max_routes, len(day.routes))
+    min_routes = min(min_routes, len(day.routes))
+
+print(f"Maximum routes among all days: {max_routes}")
+print(f"Minimum routes among all days: {min_routes}")
+
+
+print("\nPenalties count:")
+
+overloaded_route_count = ls_improved_solution.get_overload_route_count()
+irregular_services_count, irreg_serv_count_edges = ls_improved_solution.get_irregular_services_count()
+irregular_spacing_count, irreg_space_count_edges = ls_improved_solution.get_irregular_spacing_count()
+
+print(f"Overloaded route count: {overloaded_route_count}")
+print(f"Irregular services count: {irregular_services_count}")
+print(f"Irregular spacing count: {irregular_spacing_count}")
+print(f"Irregular spacing count edges:\n")
+# for edge in irreg_space_count_edges:
+#     print(f"\t{edge}")
+#     print(f"\tService days:{edge.service_days}")
+#     print(f"\tNumber of services:{len(edge.service_days)}")
+#     print("\tIrregular spacings at:")
+#     for i in range(len(edge.service_days)):
+#         if edge.evaluate_spacing(i, i+1, ls_improved_solution.vehicle) > 0:
+#             print(f"\tIrregular spacing between services {i} and {i+1} on days {edge.service_days[i]} and {edge.service_days[(i+1)%len(edge.service_days)]}")
+#     print('\n')

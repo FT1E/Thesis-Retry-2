@@ -247,7 +247,7 @@ class Edge:
 
     def is_under_satisfied(self, vehicle):
         service_count = len(self.service_days)
-        expected_service_count = math.floor(vehicle['planning_duration'] / math.ceil(self.freq))
+        expected_service_count = math.floor(vehicle['planning_duration'] / self.freq)
         if service_count < expected_service_count:
             return True
         return False
@@ -255,7 +255,7 @@ class Edge:
 
     def is_over_satisfied(self, vehicle):
         service_count = len(self.service_days)
-        expected_service_count = math.ceil(vehicle['planning_duration'] / math.floor(self.freq))
+        expected_service_count = math.ceil(vehicle['planning_duration'] / self.freq)
         if service_count > expected_service_count:
             return True
         return False

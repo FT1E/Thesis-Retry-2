@@ -2,6 +2,7 @@
 import sys
 import time
 import datetime
+import random
 import copy
 from threading import Thread, Lock
 from queue import Queue
@@ -1132,7 +1133,7 @@ def improved_phase_1(working, N=5, best_full_eval=True):
     
     return working, best_score, best_score < original_score
 
-# ? PHASE 2 - move_service_operator and swap_services_operator
+# ? PHASE 2 - move_service_operator
 def improved_phase_2(working, N=5, best_full_eval=True):
     original_score = working.evaluate()
 
@@ -1301,6 +1302,107 @@ def improved_phase_2(working, N=5, best_full_eval=True):
     return working, best_score, best_score < original_score
 
   
+# ? different from above in that it keeps iterating over one edge as long as it can find improvement
+# ? when it can't it goes on to the next edge
+# ? basically the goal is to focus on one edge at a time
+# ? similar to improved_phase_1, apply best op per edge, not per solution
+# ? or rather more like phase 4, best op per day, and keep iterating over the same day
+# ? since some edges may converge to optimality sooner than later
+def improved_phase_2_per_edge(working, N=5, best_full_eval=True):
+    original_score = working.evaluate()
+
+    best_score = original_score
+    
+    work_days = set(working.get_work_days())
+    
+    iteration_count = 0
+    iteration_avg_time = 0
+    last_report = time.time() - 600
+
+
+    # best_op[edge.sid] = best op_tuple for this edge with estimation at [0]
+
+
+    # ? keep finding best op for this edge
+    # ? as long as an improvement can be found
+    # ? then move on to the next edge
+
+    # ? option 2 - find best op for edge, apply it
+
+    improved = True
+    while improved:
+        improved = False
+        iteration_count += 1
+        iter_start = time.time()
+    
+        for edge in working.demanded_edges:
+
+
+            # ? resetting values
+            # ? for finding best estimates of move_service operator
+            best_estimates = []
+            best_op_tuples = []
+
+
+            tight_range = int(edge.freq // 2)
+
+            for d1 in edge.service_days:
+
+                # 1. estimate possible candidates for moving FROM d1
+                move_to_ignore_candidates = set()
+                for day in edge.service_days:
+                    if day == d1:
+                        continue
+                    for i in range(-tight_range, tight_range):
+                        move_to_ignore_candidates.add(day + i)
+
+                move_to_actual_candidates = work_days.difference(move_to_ignore_candidates)
+                
+                # 2. perform attempts on the candidate list
+                for d2 in move_to_actual_candidates:        
+                    evaluate_operator_topN(best_estimates, best_op_tuples, move_service_operator, undo_move_service_operator, working, d1, d2, edge, N=N)
+
+            # todo - maybe apply similar estimation tricks
+            # todo - maybe save all candidates for a single edge
+            # todo - according to my calcs that is at most 3600, without using the tight_range limitation of candidates, which makes it less
+
+            
+            if best_full_eval:
+                improved_edge, best_score, _ = full_evaluate_topN_best_full_eval(best_op_tuples, working)
+            else:
+                improved_edge, best_score, _ = full_evaluate_topN_best_estimate(best_op_tuples, working)
+
+            if improved_edge:
+                improved = True
+
+
+
+        iter_end = time.time()
+
+        last_iteration_time = iter_end - iter_start
+        iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
+
+
+        if iter_end - last_report > 300:
+            last_report = iter_end
+            print(f"Phase 2 (only move_services) mid-report:")
+            print(f"Iteration count: {iteration_count}")
+            print(f"Last iteration time: {last_iteration_time}")
+            print(f"Average iteration time: {iteration_avg_time}")
+            print(f"Current score: {best_score}")
+            
+    print("Phase 2 (only move_services) ended!")
+    print("Phase 2 (only move_services) Report:")
+    print(f"Iteration count: {iteration_count}")
+    print(f"Last iteration time: {last_iteration_time}")
+    print(f"Average iteration time: {iteration_avg_time}")
+    print(f"Current score: {best_score}")
+
+
+
+    return working, best_score, best_score < original_score
+
+
 
 # ? previously phase_2 was using move_service and swap_service
 # ? now improved_phase_2 uses move_service (more efficiently) and improved_phase_3 uses swap_service (also more efficiently)
@@ -1682,15 +1784,17 @@ def run(solution, topN = 5, best_full_eval = True):
         # print("\nSolution after phase 1:\n\n")
         # print(current_best_solution)
 
-        # todo - maybe insert routing operators only phase (improved_phase_4) in-between phases 1,2,3
 
         # phase 2 - move services from 1 day to another day 
         # current_best_solution, best_score, phase_improving = phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
         current_best_solution, best_score, phase_improving = improved_phase_2(current_best_solution, N=topN, best_full_eval = best_full_eval)
+        # current_best_solution, best_score, phase_improving = improved_phase_2_per_edge(current_best_solution, N=topN, best_full_eval = best_full_eval)
 
         if phase_improving:
             improving = True
 
+        # todo - again move_service phase but only trying moves from days with too many routes to days with too little routes
+        
         # phase 3 - swap service days of edges with same frequency 
         current_best_solution, best_score, phase_improving = improved_phase_3(current_best_solution, N=topN, best_full_eval = best_full_eval)
 

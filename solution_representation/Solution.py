@@ -125,6 +125,46 @@ class Solution:
         cost = routing_cost + VEHICLE_WEIGHT * vehicle_count + VEHICLE_OVERLOAD_PENALTY * overload_route_count + int(EXPECTED_SERVICES_PENALTY * irregular_services_count) + EXPECTED_SPACING_PENALTY * irregular_spacing_count
         return cost
 
+
+    def get_overload_route_count(self):
+        # number of routes which can't be handled by a single vehicle, go over the limits
+        overload_route_count = 0
+        
+        for day in self.days:
+            for route in day.routes:
+                overload_route_count += route.overload_size(self.vehicle)
+
+        return overload_route_count
+
+    def get_irregular_services_count(self):
+        # number of edges which have too many or too little services
+        irregular_services_count = 0
+
+        res_edges = []
+        for edge in self.demanded_edges:
+            # number of services penalty
+            if edge.is_under_satisfied(self.vehicle):
+                irregular_services_count += edge.under_satisfaction_size(self.vehicle)
+                res_edges.append(edge)
+            elif edge.is_over_satisfied(self.vehicle):
+                irregular_services_count += edge.over_satisfaction_size(self.vehicle)
+                res_edges.append(edge)
+
+        return irregular_services_count, res_edges
+
+    def get_irregular_spacing_count(self):
+        # number of spacings which exceed the expected spacing for the edge
+        irregular_spacing_count = 0
+        res_edges = []
+        for edge in self.demanded_edges:
+            t = edge.get_irregular_spacing_count(self.vehicle)
+            
+            irregular_spacing_count += t
+            if t > 0:
+                res_edges.append(edge)
+
+        return irregular_spacing_count, res_edges
+
     # END COST EVALUATION
 
 
