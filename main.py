@@ -3,6 +3,7 @@
 
 import math
 import time
+import os
 from datetime import timedelta
 import sys
 
@@ -23,8 +24,8 @@ from solution_representation.Solution import Solution
 
 # local search
 from algorithms.local_search import run as run_ls
-GRAPH_ID = 0
-VEHICLE_ID = 11
+GRAPH_ID = 2
+VEHICLE_ID = 6
 
 if len(sys.argv) == 3:
     GRAPH_ID = int(sys.argv[1])
