@@ -27,9 +27,27 @@ from algorithms.local_search import run as run_ls
 GRAPH_ID = 2
 VEHICLE_ID = 6
 
-if len(sys.argv) == 3:
-    GRAPH_ID = int(sys.argv[1])
-    VEHICLE_ID = int(sys.argv[2])
+GREEDY_USED = 'd5'
+# s = greedy single
+# d5 = greedy dynamic clusters with cluster size 5
+# dinf = greedy dynamic clusters with unlimited cluster size
+# f = greedy fixed (static) clusters
+
+if len(sys.argv) == 4:
+    GREEEDY_USED = sys.argv[1]
+    GRAPH_ID = int(sys.argv[2])
+    VEHICLE_ID = int(sys.argv[3])
+
+if GREEDY_USED == "s":
+    PRINT("Using greedy single algorithm!")
+elif GREEDY_USED == "d5":
+    PRINT("Using greedy dynamic clusters algorithm with cluster limit == 5!")
+elif GREEDY_USED == "dinf":
+    PRINT("Using greedy dynamic clusters algorithm with cluster limit == infinity!")
+elif GREEDY_USED == "f":
+    PRINT("Using greedy static/fixed clusters algorithm!")
+    
+
 
 print(f"Graph Data file used: {os.listdir(graph_data_directory)[GRAPH_ID]}")
 print(f"Vehicle Data file used: {os.listdir(vehicle_data_directory)[VEHICLE_ID]}\n")
@@ -73,11 +91,14 @@ vehicle['count'] = math.ceil(total_demand / (vehicle['capacity'] * len(vehicle['
 
 start = time.perf_counter()
 
-# day_assignments, capacity_used = gs_run(demanded_edge_list, vehicle)
-
-day_assignments, capacity_used = gdc_run(demanded_edge_list, adjacency_lists_deadline, vehicle, DYNAMIC_CLUSTER_SIZE_LIMIT)
-
-# day_assignments, capacity_used = gsc_run(demanded_edge_list, adjacency_lists_distance, vehicle, GRAPH_ID)
+if GREEDY_USED == "s":
+    day_assignments, capacity_used = gs_run(demanded_edge_list, vehicle)
+elif GREEDY_USED == "d5":
+    day_assignments, capacity_used = gdc_run(demanded_edge_list, adjacency_lists_deadline, vehicle, DYNAMIC_CLUSTER_SIZE_LIMIT)
+elif GREEDY_USED == "dinf":
+    day_assignments, capacity_used = gdc_run(demanded_edge_list, adjacency_lists_deadline, vehicle, float('inf'))
+elif GREEDY_USED == "f":
+    day_assignments, capacity_used = gsc_run(demanded_edge_list, adjacency_lists_distance, vehicle, GRAPH_ID)
 
 end = time.perf_counter()
 

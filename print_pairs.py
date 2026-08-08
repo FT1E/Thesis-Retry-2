@@ -32,8 +32,10 @@ raw = """GRAPH_ID VEHICLE_ID
 53 0
 49 3
 63 1
-5 11
 35 0"""
+
+# 5 11 - took 10 hrs
+
 
 pairs = []
 for line in raw.split('\n')[1:]:
@@ -41,5 +43,8 @@ for line in raw.split('\n')[1:]:
     numbers = [int(n) for n in numbers]
     pairs.append(numbers)
 
+greedy_alg = ['s', 'd5', 'dinf', 'f']
+
 for pair in pairs:
-    print(f"{pair[0]} {pair[1]}")
+    for g in greedy_alg:
+        print(f"{g} {pair[0]} {pair[1]}")
