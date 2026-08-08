@@ -39,13 +39,13 @@ if len(sys.argv) == 4:
     VEHICLE_ID = int(sys.argv[3])
 
 if GREEDY_USED == "s":
-    PRINT("Using greedy single algorithm!")
+    print("Using greedy single algorithm!")
 elif GREEDY_USED == "d5":
-    PRINT("Using greedy dynamic clusters algorithm with cluster limit == 5!")
+    print("Using greedy dynamic clusters algorithm with cluster limit == 5!")
 elif GREEDY_USED == "dinf":
-    PRINT("Using greedy dynamic clusters algorithm with cluster limit == infinity!")
+    print("Using greedy dynamic clusters algorithm with cluster limit == infinity!")
 elif GREEDY_USED == "f":
-    PRINT("Using greedy static/fixed clusters algorithm!")
+    print("Using greedy static/fixed clusters algorithm!")
     
 
 
