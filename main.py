@@ -92,27 +92,27 @@ greedy_score = solution.evaluate()
 print(f"Cost of initial solution: {greedy_score}")
 
 
-max_routes = 0
-min_routes = float('inf')
-for d in solution.get_work_days():
-    day = solution.days[d]
-    max_routes = max(max_routes, len(day.routes))
-    min_routes = min(min_routes, len(day.routes))
+# max_routes = 0
+# min_routes = float('inf')
+# for d in solution.get_work_days():
+#     day = solution.days[d]
+#     max_routes = max(max_routes, len(day.routes))
+#     min_routes = min(min_routes, len(day.routes))
 
-print(f"Maximum routes among all days: {max_routes}")
-print(f"Minimum routes among all days: {min_routes}")
+# print(f"Maximum routes among all days: {max_routes}")
+# print(f"Minimum routes among all days: {min_routes}")
 
 
-print("\nPenalties count:")
+# print("\nPenalties count:")
 
-overloaded_route_count = solution.get_overload_route_count()
-irregular_services_count, irreg_serv_count_edges = solution.get_irregular_services_count()
-irregular_spacing_count, irreg_space_count_edges = solution.get_irregular_spacing_count()
+# overloaded_route_count = solution.get_overload_route_count()
+# irregular_services_count, irreg_serv_count_edges = solution.get_irregular_services_count()
+# irregular_spacing_count, irreg_space_count_edges = solution.get_irregular_spacing_count()
 
-print(f"Overloaded route count: {overloaded_route_count}")
-print(f"Irregular services count: {irregular_services_count}")
-print(f"Irregular spacing count: {irregular_spacing_count}")
-print('\n')
+# print(f"Overloaded route count: {overloaded_route_count}")
+# print(f"Irregular services count: {irregular_services_count}")
+# print(f"Irregular spacing count: {irregular_spacing_count}")
+# print('\n')
 
 N = 50      # how many top candidates to consider based on estimation
 

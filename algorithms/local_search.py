@@ -174,6 +174,9 @@ def move_service_operator(solution, d1, d2, edge):
     removed_service_id = edge.service_days.index(d1)
     cost_before = edge.evaluate_service_spacing(removed_service_id, solution.vehicle)
 
+    cost_after = 0
+    # the gap left by removing d1
+    d1_gap = edge.evaluate_spacing(removed_service_id - 1, removed_service_id + 1, solution.vehicle)
     
     (route, pos), estimate_rs = remove_service_operator(solution, d1, edge)
     estimate_as = add_service_operator(solution, d2, edge)
@@ -184,12 +187,12 @@ def move_service_operator(solution, d1, d2, edge):
         # if d2 is put in same position compare spacings
         cost_after = edge.evaluate_service_spacing(new_service_id, solution.vehicle)
     else:
-        # else check the widened gap left by removing d1
-        cost_after = edge.evaluate_spacing(removed_service_id - 1, removed_service_id, solution.vehicle)
+        # else add the widened gap left by removing d1
+        cost_after += d1_gap
         
         # also check the tightened gaps made by inserting d2
         cost_after += edge.evaluate_service_spacing(new_service_id, solution.vehicle)
-        # also for before check the gap that was including d2
+        # also for before check the gap that was including d2, before insertion
         cost_before += edge.evaluate_spacing(new_service_id - 1, new_service_id + 1, solution.vehicle)
 
     estimate = cost_after - cost_before
@@ -224,6 +227,10 @@ def swap_services_operator(solution, edge_1, edge_2):
     if edge_1.freq != edge_2.freq:
         return None
 
+    # just a safety to not waste time
+    if edge_1 is edge_2:
+        return None
+
     # before_e1 = edge_1.service_days.copy()
     # before_e2 = edge_2.service_days.copy()
 
@@ -233,18 +240,9 @@ def swap_services_operator(solution, edge_1, edge_2):
 
     all_days = set(edge_1.service_days + edge_2.service_days)
 
-    only_edge_1_days = list(all_days.difference(edge_2.service_days))
-    only_edge_2_days = list(all_days.difference(edge_1.service_days))
-
-    if len(only_edge_1_days) == 0 or len(only_edge_2_days) == 0:
-        # above statemenst are equivalent
-        # if one holds true the other one is true as well
-        # since we're considering edges with same frequency
-        # to not waste time on evaluating and doing undo
-        return None
-
-    edge_1_routes = []
-    edge_2_routes = []
+    only_edge_1_days = all_days.difference(edge_2.service_days)
+    only_edge_2_days = all_days.difference(edge_1.service_days)
+    common_days = set(edge_1.service_days).intersection(edge_2.service_days)
 
     cost_before = 0
 
@@ -254,11 +252,9 @@ def swap_services_operator(solution, edge_1, edge_2):
         cost_before += edge_1.routes[day].evaluate(solution.vehicle)
 
         (route, pos), _ = remove_service_operator(solution, day, edge_1)
-        add_service_operator(solution, day, edge_2)
-
+        solution.days[day].insert_edge(edge_2, route, pos)
+        
         cost_after += edge_2.routes[day].evaluate(solution.vehicle)
-
-        edge_1_routes.append((route, pos))
 
 
 
@@ -266,12 +262,44 @@ def swap_services_operator(solution, edge_1, edge_2):
         cost_before += edge_2.routes[day].evaluate(solution.vehicle)
 
         (route, pos), _ = remove_service_operator(solution, day, edge_2)
-        add_service_operator(solution, day, edge_1)
+        solution.days[day].insert_edge(edge_1, route, pos)
 
         cost_after += edge_1.routes[day].evaluate(solution.vehicle)
 
+    for day in common_days:
+        e1_route = edge_1.routes[day]
+        e2_route = edge_2.routes[day]
 
-        edge_2_routes.append((route, pos))
+        e1_pos = e1_route.targets.index(edge_1)
+        e2_pos = e2_route.targets.index(edge_2)
+
+        # if they are in the same route
+        if e1_route is e2_route:
+            # then just switch their places
+            route = e1_route
+            cost_before += route.evaluate(solution.vehicle)
+
+
+            route.targets[e1_pos] = edge_2
+            route.targets[e2_pos] = edge_1
+            
+            # re-calculate length
+            route.calculate_length()
+
+            cost_after += route.evaluate(solution.vehicle)
+        else:
+            cost_before += e1_route.evaluate(solution.vehicle)
+            cost_before += e2_route.evaluate(solution.vehicle)
+            
+
+            e1_route.remove_edge(pos = e1_pos)
+            e2_route.remove_edge(pos = e2_pos)
+
+            e1_route.insert_edge(edge_2, pos = e1_pos)
+            e2_route.insert_edge(edge_1, pos = e2_pos)
+
+            cost_after += e1_route.evaluate(solution.vehicle)
+            cost_after += e2_route.evaluate(solution.vehicle)
 
     
     # assert edge_2.service_days == before_e1
@@ -281,20 +309,13 @@ def swap_services_operator(solution, edge_1, edge_2):
     # the only thing different is the routes - since they're inserted in random routes
     estimate = cost_after - cost_before
 
-    return (edge_1_routes, edge_2_routes), estimate
+    return None, estimate
 
 def undo_swap_services_operator(solution, edge_1, edge_2, undo_info):
     # ? similar argument for move_service, insert the removed services into the same routes and same positions
 
-    edge_1_routes, edge_2_routes = undo_info
+    swap_services_operator(solution, edge_1, edge_2)
 
-    for route, pos in edge_1_routes:
-        undo_add_service_operator(solution, route.day, edge_2)
-        undo_remove_service_operator(solution, route.day, edge_1, (route, pos))
-
-    for route, pos in edge_2_routes:
-        undo_add_service_operator(solution, route.day, edge_1)
-        undo_remove_service_operator(solution, route.day, edge_2, (route, pos))
     
 
 
@@ -1063,6 +1084,8 @@ def improved_phase_1(working, N=5, best_full_eval=True):
     iteration_count = 0
     iteration_avg_time = 0
 
+    last_report = time.time() - 600
+
     improved = True
 
     improved_edge = False
@@ -1117,19 +1140,20 @@ def improved_phase_1(working, N=5, best_full_eval=True):
         last_iteration_time = iter_end - iter_start
         iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
 
-        if iteration_count % 10 == 1:
+        if iter_end - last_report > 600:
+            last_report = iter_end
             print(f"Phase 1 mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
             print(f"Average iteration time: {iteration_avg_time}")
             print(f"Current score: {best_score}")
             
-    print("Phase 1 ended!")
+    print(f"\nPhase 1 ended! Current time: {datetime.datetime.now()}")
     print("Phase 1 Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
-    print(f"Current score: {best_score}")
+    print(f"Current score: {best_score}\n\n")
     
     return working, best_score, best_score < original_score
 
@@ -1282,20 +1306,20 @@ def improved_phase_2(working, N=5, best_full_eval=True):
         iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
 
 
-        if iter_end - last_report > 300:
+        if iter_end - last_report > 600:
             last_report = iter_end
             print(f"Phase 2 (only move_services) mid-report:")
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
             print(f"Average iteration time: {iteration_avg_time}")
-            print(f"Current score: {best_score}")
+            print(f"Current score: {best_score}\n")
             
-    print("Phase 2 (only move_services) ended!")
+    print(f"\nPhase 2 (only move_services) ended! Current time: {datetime.datetime.now()}")
     print("Phase 2 (only move_services) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
-    print(f"Current score: {best_score}")
+    print(f"Current score: {best_score}\n\n")
 
 
 
@@ -1407,11 +1431,10 @@ def improved_phase_2_per_edge(working, N=5, best_full_eval=True):
 # ? previously phase_2 was using move_service and swap_service
 # ? now improved_phase_2 uses move_service (more efficiently) and improved_phase_3 uses swap_service (also more efficiently)
 
+# ? previously phase_2 was using move_service and swap_service
+# ? now improved_phase_2 uses move_service (more efficiently) and improved_phase_3 uses swap_service (also more efficiently)
+
 # ? apply swap_services operator with fewer candidates
-# ? attempt only 1 swap with an edge with some given service days pattern
-# ? some edges may have the same service day pattern
-# ? every edge attempts a swap with each unique pattern once,
-# ? it's useless to try to attempt swap with 2 edges who have the same service day pattern
 def improved_phase_3(working, N=5, best_full_eval=True):
     
     original_score = working.evaluate()
@@ -1423,65 +1446,42 @@ def improved_phase_3(working, N=5, best_full_eval=True):
     iteration_avg_time = 0
     last_report = time.time() - 600
 
-    affected_edges = tuple()    # edges which were picked to be the best from last iteration
-    # estimations are re-calculated only for pairs involving one of these edges
-    # both edges which form the pair formed the best improvement in last iteration and for them it isn't re-calculated
-
-    # calculate initial estimations involving all pairs
-    best_estimates = []
-    best_op_tuples = []
-
-
-    patterns = dict()
-    # ? patterns[freq] = list of all unique service_day paterns used for edges with this frequence
     
-    edge_patterns = [-1] * len(working.demanded_edges)
-    # ? edge_patterns[sid] == i only if edge with this sid has service_days == patterns[freq][i]
     
-    # take 1 edge to be representative of all other edges with the same service pattern
-    # probably useless if few edges have same pattern, but still saves some time
+    best_estimates_per_freq = dict()
+    best_ops_per_freq = dict()
+
+    # ? initial calculation
+    # ? find the top N best ops for each frequency
     for freq, bucket in working.frequency_buckets.items():
-        patterns[freq] = []
+        best_ops_per_freq[freq] = []
+        best_estimates_per_freq[freq] = []
 
-        for edge in bucket:
-            if edge.service_days not in patterns[freq]:
-                patterns[freq].append(edge.service_days)
-                edge_patterns[edge.sid] = len(patterns[freq]) - 1       # since it's the last one
-            else:
-                pos = patterns[freq].index(edge.service_days)
-                edge_patterns[edge.sid] = pos
+        for i, edge_1 in enumerate(bucket):
+            for j in range(i+1, len(bucket)):
+                edge_2 = bucket[j]
+                evaluate_operator_topN(best_estimates_per_freq[freq], best_ops_per_freq[freq], swap_services_operator, undo_swap_services_operator, working, edge_1=edge_1, edge_2=edge_2, N=N)
 
     improved = True
     while improved:
         improved = False
 
         # ? resetting values
-        # ? for finding best estimates of move_service operator
         best_estimates = []
         best_op_tuples = []
-
+        
         iteration_count += 1
         iter_start = time.time()
 
+        # ? combine the best_ops from each frequency
+        for freq, freq_best_estimates in best_estimates_per_freq.items():
+            for i, estimate in enumerate(freq_best_estimates):
+                pos = binary_insertion(best_estimates, estimate)
+                if pos < N:
+                    best_estimates.insert(pos, estimate)
+                    best_op_tuples.insert(pos, best_ops_per_freq[freq][i])
 
-        for freq, bucket in working.frequency_buckets.items():
-
-            candidates = []
-            patterns_used = []
-            for edge_2 in bucket:
-                if edge_patterns[edge_2.sid] not in patterns_used:
-                    candidates.append(edge_2)
-                    patterns_used.append(edge_patterns[edge_2.sid])
-                    if len(patterns_used) == len(patterns[freq]):
-                        break
-            for edge_1 in bucket:                
-
-                for edge_2 in candidates:
-                    # try to perform a swap only with 1 candidate who has service_days == patterns[freq][i]
-                    evaluate_operator_topN(best_estimates, best_op_tuples, swap_services_operator, undo_swap_services_operator, working, N=N, edge_1 = edge_1, edge_2 = edge_2)
-
-        
-
+        # apply the best op
 
         if best_full_eval:
             improved, best_score, min_op_tuple = full_evaluate_topN_best_full_eval(best_op_tuples, working)
@@ -1489,13 +1489,47 @@ def improved_phase_3(working, N=5, best_full_eval=True):
             improved, best_score, min_op_tuple = full_evaluate_topN_best_estimate(best_op_tuples, working)
 
         if min_op_tuple is not None:
+            # ? - then delete every op tuple in the top N for this freq which uses as argument an edge which was modified
             # (op, undo_op, args, kwargs)
             kwargs = min_op_tuple[3]
+            affected_edge_1, affected_edge_2 = kwargs.values()
+            
+            affected_freq = affected_edge_1.freq    # they have the same frequency so taking from edge_1 is enough
 
-            edge_1, edge_2 = kwargs.values()
+            rm_indexes = []
+            for i, op_tuple in enumerate(best_ops_per_freq[affected_freq]):
+                kwargs = op_tuple[3]
+                edge_1, edge_2 = kwargs.values()
+                if edge_1 == affected_edge_1 or edge_2 == affected_edge_1 or edge_1 == affected_edge_2 or edge_2 == affected_edge_2:
+                    rm_indexes.append(i)
 
-            # - swap their edge patterns value
-            edge_patterns[edge_1.sid], edge_patterns[edge_2.sid] = edge_patterns[edge_2.sid], edge_patterns[edge_1.sid]
+            for i in rm_indexes[::-1]:
+                best_ops_per_freq[affected_freq].pop(i)
+                best_estimates_per_freq[affected_freq].pop(i)
+        
+
+
+
+            # ? - alternative where whole bucket is re-calculated
+            # best_estimates_per_freq[affected_freq] = []
+            # best_ops_per_freq[affected_freq] = []
+
+            # bucket = working.frequency_buckets[affected_freq]
+            # for i, edge_1 in enumerate(bucket):
+            #     for j in range(i+1, len(bucket)):
+            #         edge_2 = bucket[j]
+            #         evaluate_operator_topN(best_estimates_per_freq[affected_freq], best_ops_per_freq[affected_freq], swap_services_operator, undo_swap_services_operator, working, edge_1=edge_1, edge_2=edge_2, N=N)
+
+
+            # ? - recalculate for pairs involving edges which were modified
+            for edge in working.frequency_buckets[affected_freq]:
+                if edge != affected_edge_1:
+                    evaluate_operator_topN(best_estimates_per_freq[affected_freq], best_ops_per_freq[affected_freq], swap_services_operator, undo_swap_services_operator, working, edge_1=affected_edge_1, edge_2=edge, N=N)
+                
+                if edge != affected_edge_2:
+                    evaluate_operator_topN(best_estimates_per_freq[affected_freq], best_ops_per_freq[affected_freq], swap_services_operator, undo_swap_services_operator, working, edge_1=affected_edge_2, edge_2=edge, N=N)
+            
+
 
         iter_end = time.time()
 
@@ -1509,14 +1543,14 @@ def improved_phase_3(working, N=5, best_full_eval=True):
             print(f"Iteration count: {iteration_count}")
             print(f"Last iteration time: {last_iteration_time}")
             print(f"Average iteration time: {iteration_avg_time}")
-            print(f"Current score: {best_score}")
+            print(f"Current score: {best_score}\n")
             
-    print("Phase 3 (using only swap_services) ended!")
+    print(f"\nPhase 3 (using only swap_services) ended! Current time: {datetime.datetime.now()}")
     print("Phase 3 (using only swap_services) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
-    print(f"Current score: {best_score}")
+    print(f"Current score: {best_score}\n\n")
 
 
 
@@ -1539,6 +1573,8 @@ def improved_phase_4(working, N=5, best_full_eval=True):
     iteration_count = 0
     iteration_avg_time = 0
 
+
+    last_report = time.time() - 600
     
     work_days = working.get_work_days()
 
@@ -1712,7 +1748,8 @@ def improved_phase_4(working, N=5, best_full_eval=True):
             last_iteration_time = iter_end - iter_start
             iteration_avg_time = iteration_avg_time * (iteration_count - 1) / iteration_count + last_iteration_time / iteration_count
 
-            if iteration_count % 10 == 1:
+            if iter_end - last_report > 600:
+                last_report = iter_end
                 print(f"Phase 4 (routing operators) mid-report:")
                 print(f"Current day: {day}")
                 print(f"Iteration count: {iteration_count}")
@@ -1728,12 +1765,12 @@ def improved_phase_4(working, N=5, best_full_eval=True):
         print(f"Average iteration time: {iteration_avg_time}")
         print(f"Current score: {best_score}\n")
 
-    print("\nPhase 4 (routing operators) ended!")
+    print(f"\nPhase 4 (routing operators) ended! Current time: {datetime.datetime.now()}")
     print("Phase 4 (routing operators) Report:")
     print(f"Iteration count: {iteration_count}")
     print(f"Last iteration time: {last_iteration_time}")
     print(f"Average iteration time: {iteration_avg_time}")
-    print(f"Current score: {best_score}")
+    print(f"Current score: {best_score}\n\n")
 
     return working, best_score, best_score < original_score
 
@@ -1826,7 +1863,7 @@ def run(solution, topN = 5, best_full_eval = True):
             print(current_best_solution)
             print('\n\n')
         
-    print(f"Local search ended after {iteration_count} iterations.")
+    print(f"\nLocal search ended after {iteration_count} iterations.")
     print(f"Last iteration time: {iteration_time_taken} seconds")
     print(f"Iteration average time: {average_iteration_time} seconds")
     print(f"Original score: {original_score}")
