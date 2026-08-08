@@ -19,10 +19,8 @@ def run(demanded_edge_list, vehicle):
 
     for day in range(vehicle['planning_duration']):
 
-        demanded_edge_list = demanded_edge_list + next_day_streets[0]
-
-        for i in range(vehicle['planning_duration'] - day - 1):
-            next_day_streets[i] = next_day_streets[i+1]
+        demanded_edge_list = demanded_edge_list + next_day_streets.pop(0)
+        next_day_streets.append([])
 
         if day + 1 in vehicle['days_no_service']:
             # skip day if vehicle not available for today
@@ -35,10 +33,8 @@ def run(demanded_edge_list, vehicle):
         while len(demanded_edge_list) == 0 and cnt < vehicle['planning_duration'] - day:
             cnt += 1
 
-            demanded_edge_list = demanded_edge_list + next_day_streets[0]
-
-            for i in range(vehicle['planning_duration'] - day - 1):
-                next_day_streets[i] = next_day_streets[i+1]
+            demanded_edge_list = demanded_edge_list + next_day_streets.pop(0)
+            next_day_streets.append([])
 
         hq.heapify(demanded_edge_list)
             
@@ -50,7 +46,7 @@ def run(demanded_edge_list, vehicle):
 
             if capacity_used[day] + edge.demand > max_day_capacity:
                 # if edge has higher demand than the vehicle can handle for the day then skip it for today
-                hq.heappush(next_day_streets[0], edge)
+                next_day_streets[0].append(edge)
                 continue
 
             capacity_used[day] += edge.demand
@@ -61,6 +57,6 @@ def run(demanded_edge_list, vehicle):
             if (edge.last_cleaning_day + edge.freq) < vehicle['planning_duration']:
                 # push it to the future for at least freq/2 days
                 # so some edgees that have higher frequency aren't clean
-                hq.heappush(next_day_streets[int(edge.freq // 2)], edge)
+                next_day_streets[int(edge.freq // 2)].append(edge)
 
     return day_assignment, capacity_used
