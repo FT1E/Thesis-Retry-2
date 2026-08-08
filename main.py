@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 import sys
 import os
 
-from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data, graph_data_directory
+from data.read_data import get_graph_al, get_graph_demanded_edges, get_graph_metadata, get_vehicle_data, graph_data_directory, vehicle_data_directory
 from util.min_distances import calculate_distances
 from solution_representation.Edge import PriorityType
 
@@ -31,7 +31,8 @@ if len(sys.argv) == 3:
     GRAPH_ID = int(sys.argv[1])
     VEHICLE_ID = int(sys.argv[2])
 
-print(f"Graph Data file used: {os.listdir(graph_data_directory)[GRAPH_ID]}\n")
+print(f"Graph Data file used: {os.listdir(graph_data_directory)[GRAPH_ID]}")
+print(f"Vehicle Data file used: {os.listdir(vehicle_data_directory)[VEHICLE_ID]}\n")
 print(f"Program starting at: {datetime.now()}")
 
 DYNAMIC_CLUSTER_SIZE_LIMIT = 5
@@ -87,15 +88,37 @@ print(f"Greedy algorithm time: {greedy_time:.6f} seconds")
 solution = Solution(day_assignments, adjacency_lists_distance, vehicle, GRAPH_ID)
 
 # print(solution)
+greedy_score = solution.evaluate()
+print(f"Cost of initial solution: {greedy_score}")
 
-print(f"Cost of initial solution: {solution.evaluate()}")
 
+max_routes = 0
+min_routes = float('inf')
+for d in solution.get_work_days():
+    day = solution.days[d]
+    max_routes = max(max_routes, len(day.routes))
+    min_routes = min(min_routes, len(day.routes))
+
+print(f"Maximum routes among all days: {max_routes}")
+print(f"Minimum routes among all days: {min_routes}")
+
+
+print("\nPenalties count:")
+
+overloaded_route_count = solution.get_overload_route_count()
+irregular_services_count, irreg_serv_count_edges = solution.get_irregular_services_count()
+irregular_spacing_count, irreg_space_count_edges = solution.get_irregular_spacing_count()
+
+print(f"Overloaded route count: {overloaded_route_count}")
+print(f"Irregular services count: {irregular_services_count}")
+print(f"Irregular spacing count: {irregular_spacing_count}")
+print('\n')
 
 N = 50      # how many top candidates to consider based on estimation
 
 unsatisfied_edges = solution.unsatisfied_edges(print_info=True)
 
-print(f"Running Local Search with top {N} operations according to estimation")
+print(f"Running Local Search with top {N} operations according to estimation\n\n")
 
 start = time.time()
 
@@ -116,6 +139,7 @@ print("\n----- MARKER - SOLUTION PRINTED ABOVE -------\n")
 print("Printing greedy algorithm time to avoid scrolling or ctrl+f")
 print(f"Greedy algorithm time: {timedelta(seconds = greedy_time)} seconds")
 print(f"LS time: {timedelta(seconds = ls_time)}")
+print(f"Greedy algorithm score: {greedy_score}")
 print(f"LS return score: {ls_score}")
 print(f"Final solution score: {ls_improved_solution.evaluate()}")
 
