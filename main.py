@@ -34,7 +34,7 @@ GREEDY_USED = 'd5'
 # f = greedy fixed (static) clusters
 
 if len(sys.argv) == 4:
-    GREEEDY_USED = sys.argv[1]
+    GREEDY_USED = sys.argv[1]
     GRAPH_ID = int(sys.argv[2])
     VEHICLE_ID = int(sys.argv[3])
 
